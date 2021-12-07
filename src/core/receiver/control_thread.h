@@ -170,6 +170,11 @@ private:
     const std::string glo_utc_default_xml_filename_ = "./glo_utc_model.xml";
     const std::string gal_almanac_default_xml_filename_ = "./gal_almanac.xml";
     const std::string gps_almanac_default_xml_filename_ = "./gps_almanac.xml";
+    
+    const std::string irn_eph_default_xml_filename_ = "./irnss_ephemeris.xml";
+    const std::string irn_utc_default_xml_filename_ = "./irnss_utc_model.xml";
+    const std::string irn_iono_default_xml_filename_ = "./irnss_iono.xml";
+    
 
     const size_t channel_event_type_hash_code_ = typeid(channel_event_sptr).hash_code();
     const size_t command_event_type_hash_code_ = typeid(command_event_sptr).hash_code();

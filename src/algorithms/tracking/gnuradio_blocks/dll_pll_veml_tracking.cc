@@ -30,12 +30,14 @@
 #include "Galileo_E5a.h"
 #include "Galileo_E5b.h"
 #include "Galileo_E6.h"
+#include "IRNSS_at_1.h"
 #include "MATH_CONSTANTS.h"
 #include "beidou_b1i_signal_replica.h"
 #include "beidou_b3i_signal_replica.h"
 #include "galileo_e1_signal_replica.h"
 #include "galileo_e5_signal_replica.h"
 #include "galileo_e6_signal_replica.h"
+#include "irnss_sdr_signal_replica.h"
 #include "gnss_satellite.h"
 #include "gnss_sdr_create_directory.h"
 #include "gnss_sdr_filesystem.h"
@@ -120,8 +122,10 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_) : gr::bl
     map_signal_pretty_name["B1"] = "B1I";
     map_signal_pretty_name["B3"] = "B3I";
     map_signal_pretty_name["E6"] = "E6";
+    map_signal_pretty_name["1I"] = "1I";
 
     d_signal_pretty_name = map_signal_pretty_name[d_signal_type];
+    
 
     if (d_trk_parameters.system == 'G')
         {
@@ -398,6 +402,43 @@ dll_pll_veml_tracking::dll_pll_veml_tracking(const Dll_Pll_Conf &conf_) : gr::bl
                     d_symbols_per_bit = 0;
                 }
         }
+    else if (d_trk_parameters.system == 'I')
+        {
+            d_systemName = "IRNSS";
+            if (d_signal_type == "1I")
+                {
+                    d_signal_carrier_freq = IRNSS_L5_FREQ_HZ;
+                    d_code_period = IRNSS_L5I_CHIP_PERIOD_S;
+                    d_code_chip_rate = IRNSS_L5I_CODE_RATE_HZ;
+                    d_correlation_length_ms = 1;
+                    d_code_samples_per_chip = 1;
+                    d_code_length_chips = static_cast<int32_t>(IRNSS_L5I_CODE_LENGTH_CHIPS);
+                    // GPS L1 C/A does not have pilot component nor secondary code
+                    d_secondary = false;
+                    d_trk_parameters.track_pilot = false;
+                    d_trk_parameters.slope = 1.0;
+                    d_trk_parameters.spc = d_trk_parameters.early_late_space_chips;
+                    d_trk_parameters.y_intercept = 1.0;
+                    // symbol integration: 20 trk symbols (20 ms) = 1 tlm bit
+                    // set the preamble in the secondary code acquisition to obtain tlm symbol synchronization
+                    d_secondary_code_length = static_cast<uint32_t>(IRNSS_L5_PREAMBLE_LENGTH_SYMBOLS);
+                    d_secondary_code_string = IRNSS_L5_PREAMBLE_SYMBOLS_STR;
+                    d_symbols_per_bit = IRNSS_L5_TELEMETRY_SYMBOLS_PER_BIT;
+                }
+            else
+                {
+                    LOG(WARNING) << "Invalid Signal argument when instantiating tracking blocks";
+                    std::cerr << "Invalid Signal argument when instantiating tracking blocks\n";
+                    d_correlation_length_ms = 1;
+                    d_secondary = false;
+                    d_signal_carrier_freq = 0.0;
+                    d_code_period = 0.0;
+                    d_code_length_chips = 0;
+                    d_code_samples_per_chip = 0U;
+                    d_symbols_per_bit = 0;
+                }
+        }
+    
     else
         {
             LOG(WARNING) << "Invalid System argument when instantiating tracking blocks";
@@ -640,7 +681,8 @@ void dll_pll_veml_tracking::start_tracking()
     Signal_[0] = d_acquisition_gnss_synchro->Signal[0];
     Signal_[1] = d_acquisition_gnss_synchro->Signal[1];
     Signal_[2] = d_acquisition_gnss_synchro->Signal[2];
-
+    LOG(INFO)<<"System Name is "<<d_systemName;
+    LOG(INFO)<<"Signal Type is "<<d_signal_type;
     if (d_systemName == "GPS" and d_signal_type == "1C")
         {
             gps_l1_ca_code_gen_float(d_tracking_code, d_acquisition_gnss_synchro->PRN, 0);
@@ -806,6 +848,10 @@ void dll_pll_veml_tracking::start_tracking()
                     d_Prompt_circular_buffer.set_capacity(d_secondary_code_length);
                 }
         }
+    else if (d_systemName == "IRNSS" and d_signal_type == "1I")
+        {
+            irnss_l5_sps_gen_float(d_tracking_code, d_acquisition_gnss_synchro->PRN, 0);
+        }
 
     d_multicorrelator_cpu.set_local_code_and_taps(d_code_samples_per_chip * d_code_length_chips, d_tracking_code.data(), d_local_code_shift_chips.data());
     std::fill_n(d_correlator_outs.begin(), d_n_correlator_taps, gr_complex(0.0, 0.0));
@@ -940,6 +986,7 @@ bool dll_pll_veml_tracking::cn0_and_tracking_lock_status(double coh_integration_
     // ####### CN0 ESTIMATION AND LOCK DETECTORS ######
     if (d_cn0_estimation_counter < d_trk_parameters.cn0_samples)
         {
+            LOG(INFO)<<"INSIDE BUFFER WITH PROMT";
             // fill buffer with prompt correlator output values
             d_Prompt_buffer[d_cn0_estimation_counter] = d_P_accu;
             d_cn0_estimation_counter++;
@@ -949,37 +996,58 @@ bool dll_pll_veml_tracking::cn0_and_tracking_lock_status(double coh_integration_
     d_Prompt_buffer[d_cn0_estimation_counter % d_trk_parameters.cn0_samples] = d_P_accu;
     d_cn0_estimation_counter++;
     // Code lock indicator
+    LOG(INFO)<<"d_cn0_estimation_counter "<<d_cn0_estimation_counter;
+
     const float d_CN0_SNV_dB_Hz_raw = cn0_m2m4_estimator(d_Prompt_buffer.data(), d_trk_parameters.cn0_samples, static_cast<float>(coh_integration_time_s));
     d_CN0_SNV_dB_Hz = d_cn0_smoother.smooth(d_CN0_SNV_dB_Hz_raw);
+    LOG(INFO)<<"d_CN0_SNV_dB_Hz_raw "<<d_CN0_SNV_dB_Hz_raw;
+    LOG(INFO)<<"d_CN0_SNV_dB_Hz "<<d_CN0_SNV_dB_Hz;
+
     // Carrier lock indicator
     d_carrier_lock_test = d_carrier_lock_test_smoother.smooth(carrier_lock_detector(d_Prompt_buffer.data(), 1));
     // Loss of lock detection
+    LOG(INFO)<<"d_carrier_lock_test "<<d_carrier_lock_test;
+
+    
     if (!d_pull_in_transitory)
         {
+            LOG(INFO)<<"iNSIDE PULL IN ";
             if (d_carrier_lock_test < d_carrier_lock_threshold)
                 {
+                    LOG(INFO)<<"cARRIER FAIL INCREASED. ";
                     d_carrier_lock_fail_counter++;
                 }
             else
                 {
                     if (d_carrier_lock_fail_counter > 0)
                         {
+                            LOG(INFO)<<"cARRIER FAIL dECREASED. ";
+
                             d_carrier_lock_fail_counter--;
                         }
                 }
 
             if (d_CN0_SNV_dB_Hz < d_trk_parameters.cn0_min)
                 {
+                    LOG(INFO)<<"CODE FAIL iNCREASED DUE TO SNV. ";
+
                     d_code_lock_fail_counter++;
                 }
             else
                 {
                     if (d_code_lock_fail_counter > 0)
                         {
+                            LOG(INFO)<<"CODE FAIL iNCREASED DUE TO SNV. ";
+
                             d_code_lock_fail_counter--;
                         }
                 }
         }
+    LOG(INFO)<<"MAX CARRIER LOCK "<< d_trk_parameters.max_carrier_lock_fail;
+    LOG(INFO)<<"D CARRIER LOCK FAIL "<<d_carrier_lock_fail_counter;
+    LOG(INFO)<<"MAX cODE LOCK "<< d_trk_parameters.max_code_lock_fail;
+    LOG(INFO)<<"D CODE LOCK FAIL "<<d_code_lock_fail_counter;
+
     if (d_carrier_lock_fail_counter > d_trk_parameters.max_carrier_lock_fail or d_code_lock_fail_counter > d_trk_parameters.max_code_lock_fail)
         {
             std::cout << "Loss of lock in channel " << d_channel << "!\n";
@@ -1776,6 +1844,7 @@ int dll_pll_veml_tracking::general_work(int noutput_items __attribute__((unused)
                         loss_of_lock = true;                                 // Set the flag so that the negative indication can be generated
                         current_synchro_data = *d_acquisition_gnss_synchro;  // Fill in the Gnss_Synchro object with basic info
                     }
+                // if (0){}
                 else
                     {
                         bool next_state = false;

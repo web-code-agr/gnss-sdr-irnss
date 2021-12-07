@@ -26,6 +26,7 @@
 #include "gnss_synchro.h"
 #include "gps_cnav_ephemeris.h"
 #include "gps_ephemeris.h"
+#include "irnss_ephemeris.h"
 #include "rtcm.h"
 #include "rtklib_solver.h"
 #include <boost/exception/diagnostic_information.hpp>

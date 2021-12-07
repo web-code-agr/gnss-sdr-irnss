@@ -32,6 +32,7 @@ set(GNSS_SPLIBS_SOURCES
     pass_through.cc
     short_x2_to_cshort.cc
     gnss_sdr_string_literals.cc
+    irnss_sdr_signal_replica.cc
 )
 
 set(GNSS_SPLIBS_HEADERS
@@ -63,6 +64,7 @@ set(GNSS_SPLIBS_HEADERS
     pass_through.h
     short_x2_to_cshort.h
     gnss_sdr_string_literals.h
+    irnss_sdr_signal_replica.h
 )
 
 if(ENABLE_OPENCL)

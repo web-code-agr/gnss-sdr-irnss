@@ -70,6 +70,7 @@ constexpr double TWO_P56 = 7.205759403792794e+016;  //!< 2^56
 constexpr double TWO_P57 = 1.441151880758559e+017;  //!< 2^57
 
 constexpr double TWO_N2 = 0.25;                     //!< 2^-2
+constexpr double TWO_N4 = 0.0625;                     //!< 2^-4
 constexpr double TWO_N5 = 0.03125;                  //!< 2^-5
 constexpr double TWO_N6 = 0.015625;                 //!< 2^-6
 constexpr double TWO_N8 = 0.00390625;               //!< 2^-8
@@ -90,6 +91,7 @@ constexpr double TWO_N24 = 5.960464477539063e-008;  //!< 2^-24
 constexpr double TWO_N25 = 2.980232238769531e-008;  //!< 2^-25
 constexpr double TWO_N26 = 1.490116119384765e-009;  //!< 2^-26
 constexpr double TWO_N27 = 7.450580596923828e-009;  //!< 2^-27
+constexpr double TWO_N28 = 3.725290298e-009;  //!< 2^-28
 constexpr double TWO_N29 = 1.862645149230957e-009;  //!< 2^-29
 constexpr double TWO_N30 = 9.313225746154785e-010;  //!< 2^-30
 constexpr double TWO_N31 = 4.656612873077393e-010;  //!< 2^-31
@@ -116,6 +118,7 @@ constexpr double TWO_N68 = 3.388131789017201e-21;                               
 
 constexpr double PI_TWO_N19 = 5.992112452678286e-006;  //!< Pi*2^-19
 constexpr double PI_TWO_N43 = 3.571577341960839e-013;  //!< Pi*2^-43
+constexpr double PI_TWO_N41 = 1.428630937e-012;  //!< Pi*2^-41
 constexpr double PI_TWO_N31 = 1.462918079267160e-009;  //!< Pi*2^-31
 constexpr double PI_TWO_N38 = 1.142904749427469e-011;  //!< Pi*2^-38
 constexpr double PI_TWO_N23 = 3.745070282923929e-007;  //!< Pi*2^-23

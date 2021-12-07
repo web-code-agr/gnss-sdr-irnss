@@ -93,7 +93,8 @@ private:
         evGLO_2G,
         evBDS_B1,
         evBDS_B2,
-        evBDS_B3
+        evBDS_B3,
+        evIRN_1I,
     };
     std::map<std::string, StringValue_> d_mapStringValues;
 

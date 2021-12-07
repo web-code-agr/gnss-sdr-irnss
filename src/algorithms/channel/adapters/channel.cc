@@ -14,7 +14,6 @@
  *
  * -----------------------------------------------------------------------------
  */
-
 #include "channel.h"
 #include "acquisition_interface.h"
 #include "channel_fsm.h"
@@ -209,17 +208,29 @@ void Channel::set_signal(const Gnss_Signal& gnss_signal)
     std::lock_guard<std::mutex> lk(mx_);
     gnss_signal_ = gnss_signal;
     const std::string str_aux = gnss_signal_.get_signal_str();
+    
+
     gnss_synchro_.Signal[0] = str_aux[0];
     gnss_synchro_.Signal[1] = str_aux[1];
     gnss_synchro_.Signal[2] = '\0';  // make sure that string length is only two characters
+    
+
     gnss_synchro_.PRN = gnss_signal_.get_satellite().get_PRN();
+
+    
+    
+
     gnss_synchro_.System = gnss_signal_.get_satellite().get_system_short().c_str()[0];
+    
     acq_->set_local_code();
     if (flag_enable_fpga_)
         {
             trk_->set_gnss_synchro(&gnss_synchro_);
         }
+    
     nav_->set_satellite(gnss_signal_.get_satellite());
+    
+
 }
 
 

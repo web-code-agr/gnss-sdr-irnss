@@ -142,6 +142,8 @@ hybrid_observables_gs::hybrid_observables_gs(const Obs_Conf &conf_) : gr::block(
     d_mapStringValues["B1"] = evBDS_B1;
     d_mapStringValues["B2"] = evBDS_B2;
     d_mapStringValues["B3"] = evBDS_B3;
+    d_mapStringValues["1I"] = evIRN_1I;
+
 }
 
 
@@ -550,6 +552,7 @@ void hybrid_observables_gs::smooth_pseudoranges(std::vector<Gnss_Synchro> &data)
                             wavelength_m = SPEED_OF_LIGHT_M_S / FREQ1;
                             break;
                         case evGPS_L5:
+                        case evIRN_1I:
                         case evGAL_5X:
                             wavelength_m = SPEED_OF_LIGHT_M_S / FREQ5;
                             break;

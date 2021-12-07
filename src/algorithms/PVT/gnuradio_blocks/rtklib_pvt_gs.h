@@ -49,6 +49,7 @@ class Galileo_Ephemeris;
 class GeoJSON_Printer;
 class Gps_Almanac;
 class Gps_Ephemeris;
+class Irnss_Ephemeris;
 class Gpx_Printer;
 class Kml_Printer;
 class Monitor_Pvt_Udp_Sink;
@@ -78,6 +79,8 @@ public:
      * \brief Get latest set of GPS ephemeris from PVT block
      */
     std::map<int, Gps_Ephemeris> get_gps_ephemeris_map() const;
+    std::map<int, Irnss_Ephemeris> get_irnss_ephemeris_map() const;
+
 
     /*!
      * \brief Get latest set of GPS almanac from PVT block
@@ -197,7 +200,8 @@ private:
         evGLO_2G,
         evBDS_B1,
         evBDS_B2,
-        evBDS_B3
+        evBDS_B3, 
+        evIRN_1I,
     };
     std::map<std::string, StringValue_> d_mapStringValues;
     std::map<int, Gnss_Synchro> d_gnss_observables_map;
@@ -209,6 +213,9 @@ private:
     size_t d_gps_ephemeris_sptr_type_hash_code;
     size_t d_gps_iono_sptr_type_hash_code;
     size_t d_gps_utc_model_sptr_type_hash_code;
+    size_t d_irnss_ephemeris_sptr_type_hash_code;
+    size_t d_irnss_iono_sptr_type_hash_code;
+    size_t d_irnss_utc_model_sptr_type_hash_code;
     size_t d_gps_cnav_ephemeris_sptr_type_hash_code;
     size_t d_gps_cnav_iono_sptr_type_hash_code;
     size_t d_gps_cnav_utc_model_sptr_type_hash_code;

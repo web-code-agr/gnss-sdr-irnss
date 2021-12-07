@@ -493,11 +493,17 @@ void pcps_acquisition::dump_results(int32_t effective_fft_size)
 
 float pcps_acquisition::max_to_input_power_statistic(uint32_t& indext, int32_t& doppler, uint32_t num_doppler_bins, int32_t doppler_max, int32_t doppler_step)
 {
+    LOG(INFO)<<"Bit transition flag: "<<d_acq_parameters.bit_transition_flag;
+    LOG(INFO)<<"fft size: "<<d_fft_size;
+    LOG(INFO)<<"noncoherent integration counter: "<<d_num_noncoherent_integrations_counter;
+    // LOG(INFO)<<"Magniture grid: "<<d_magnitude_grid;
+
     float grid_maximum = 0.0;
     uint32_t index_doppler = 0U;
     uint32_t tmp_intex_t = 0U;
     uint32_t index_time = 0U;
     const int32_t effective_fft_size = (d_acq_parameters.bit_transition_flag ? d_fft_size / 2 : d_fft_size);
+    LOG(INFO)<<"effective fft size: "<<effective_fft_size;
 
     // Find the correlation peak and the carrier frequency
     for (uint32_t i = 0; i < num_doppler_bins; i++)
@@ -522,6 +528,8 @@ float pcps_acquisition::max_to_input_power_statistic(uint32_t& indext, int32_t& 
             doppler = static_cast<int32_t>(d_doppler_center_step_two + (static_cast<float>(index_doppler) - static_cast<float>(floor(d_num_doppler_bins_step2 / 2.0))) * d_acq_parameters.doppler_step2);
         }
 
+    LOG(INFO)<<"grid maxi: "<<grid_maximum;
+    LOG(INFO)<<"INput Power: "<<d_input_power;
     return grid_maximum / d_input_power;
 }
 
@@ -671,10 +679,23 @@ void pcps_acquisition::acquisition_core(uint64_t samp_count)
             // Compute the test statistic
             if (d_use_CFAR_algorithm_flag)
                 {
+                    LOG(INFO)<<"If 1";
+                    LOG(INFO)<<"index t: "<<indext;
+                    LOG(INFO)<<"doppler: "<<doppler;
+                    LOG(INFO)<<"num doppler bin: "<<d_num_doppler_bins;
+                    LOG(INFO)<<"doppler max: "<<d_acq_parameters.doppler_max;
+                    LOG(INFO)<<"doppler step : "<<d_doppler_step;
+
                     d_test_statistics = max_to_input_power_statistic(indext, doppler, d_num_doppler_bins, d_acq_parameters.doppler_max, d_doppler_step);
                 }
             else
                 {
+                    LOG(INFO)<<"IF 2";
+                    LOG(INFO)<<"index t: "<<indext;
+                    LOG(INFO)<<"doppler: "<<doppler;
+                    LOG(INFO)<<"num doppler bin: "<<d_num_doppler_bins;
+                    LOG(INFO)<<"doppler max: "<<d_acq_parameters.doppler_max;
+                    LOG(INFO)<<"doppler step : "<<d_doppler_step;
                     d_test_statistics = first_vs_second_peak_statistic(indext, doppler, d_num_doppler_bins, d_acq_parameters.doppler_max, d_doppler_step);
                 }
             if (d_acq_parameters.use_automatic_resampler)
@@ -728,10 +749,22 @@ void pcps_acquisition::acquisition_core(uint64_t samp_count)
             // Compute the test statistic
             if (d_use_CFAR_algorithm_flag)
                 {
+                    LOG(INFO)<<"ELSE 1";
+                    LOG(INFO)<<"index t: "<<indext;
+                    LOG(INFO)<<"doppler: "<<d_acq_parameters.doppler_step2;
+                    LOG(INFO)<<"num doppler bin: "<<d_num_doppler_bins_step2;
+                    LOG(INFO)<<"center step 2: "<<d_doppler_center_step_two;
+                    LOG(INFO)<<"doppler step : "<<d_acq_parameters.doppler_step2;
                     d_test_statistics = max_to_input_power_statistic(indext, doppler, d_num_doppler_bins_step2, static_cast<int32_t>(d_doppler_center_step_two - (static_cast<float>(d_num_doppler_bins_step2) / 2.0) * d_acq_parameters.doppler_step2), d_acq_parameters.doppler_step2);
                 }
             else
                 {
+                    LOG(INFO)<<"ELSE 2";
+                    LOG(INFO)<<"index t: "<<indext;
+                    LOG(INFO)<<"doppler: "<<d_acq_parameters.doppler_step2;
+                    LOG(INFO)<<"num doppler bin: "<<d_num_doppler_bins_step2;
+                    LOG(INFO)<<"center step 2: "<<d_doppler_center_step_two;
+                    LOG(INFO)<<"doppler step : "<<d_acq_parameters.doppler_step2;
                     d_test_statistics = first_vs_second_peak_statistic(indext, doppler, d_num_doppler_bins_step2, static_cast<int32_t>(d_doppler_center_step_two - (static_cast<float>(d_num_doppler_bins_step2) / 2.0) * d_acq_parameters.doppler_step2), d_acq_parameters.doppler_step2);
                 }
 
@@ -760,13 +793,23 @@ void pcps_acquisition::acquisition_core(uint64_t samp_count)
 
     if (!d_acq_parameters.bit_transition_flag)
         {
+            LOG(INFO)<<"In the Bit Transition flag part";
+            LOG(INFO)<<"test statistics is "<<d_test_statistics;
+            LOG(INFO)<<"threshold is "<<d_threshold;
+            d_threshold = 10.0;
             if (d_test_statistics > d_threshold)
                 {
+                    
+
                     d_active = false;
                     if (d_acq_parameters.make_2_steps)
                         {
+                            LOG(INFO)<<"Inside 2 steps";
+
                             if (d_step_two)
                                 {
+                                    LOG(INFO)<<"inside d_step_2";
+
                                     send_positive_acquisition();
                                     d_step_two = false;
                                     d_state = 0;  // Positive acquisition
@@ -782,6 +825,8 @@ void pcps_acquisition::acquisition_core(uint64_t samp_count)
                         }
                     else
                         {
+                            LOG(INFO)<<"Outside 2 steps";
+
                             send_positive_acquisition();
                             d_state = 0;  // Positive acquisition
                         }
@@ -794,8 +839,13 @@ void pcps_acquisition::acquisition_core(uint64_t samp_count)
 
             if (d_num_noncoherent_integrations_counter == d_acq_parameters.max_dwells)
                 {
+                    LOG(INFO)<<"noncohorent integration counter "<<d_num_noncoherent_integrations_counter;
+
+                    LOG(INFO)<<"Max_dwells "<<d_acq_parameters.max_dwells;
+
                     if (d_state != 0)
                         {
+                            LOG(INFO)<<"D STATE NOT 0";
                             send_negative_acquisition();
                         }
                     d_state = 0;
@@ -810,9 +860,12 @@ void pcps_acquisition::acquisition_core(uint64_t samp_count)
         }
     else
         {
+            LOG(INFO)<<"IN THE ELSE PART";
             d_active = false;
             if (d_test_statistics > d_threshold)
                 {
+                    LOG(INFO)<<"test statistics is "<<d_test_statistics;
+                    LOG(INFO)<<"threshold is "<<d_threshold;
                     if (d_acq_parameters.make_2_steps)
                         {
                             if (d_step_two)

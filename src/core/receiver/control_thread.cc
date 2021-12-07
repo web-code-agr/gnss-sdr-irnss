@@ -43,6 +43,9 @@
 #include "gps_ephemeris.h"         // for Gps_Ephemeris
 #include "gps_iono.h"              // for Gps_Iono
 #include "gps_utc_model.h"         // for Gps_Utc_Model
+#include "irnss_ephemeris.h"
+#include "irnss_iono.h"
+#include "irnss_utc_model.h"
 #include "pvt_interface.h"         // for PvtInterface
 #include "rtklib.h"                // for gtime_t, alm_t
 #include "rtklib_conversions.h"    // for alm_to_rtklib
@@ -274,12 +277,15 @@ void ControlThread::event_dispatcher(bool &valid_event, pmt::pmt_t &msg)
 {
     if (valid_event)
         {
+            LOG(INFO)<<"its a valid event";
             processed_control_messages_++;
             const size_t msg_type_hash_code = pmt::any_ref(msg).type().hash_code();
             if (msg_type_hash_code == channel_event_type_hash_code_)
                 {
+                    LOG(INFO)<<"IF 1";
                     if (receiver_on_standby_ == false)
                         {
+                            LOG(INFO)<<"IF 2";
                             const auto new_event = boost::any_cast<channel_event_sptr>(pmt::any_ref(msg));
                             DLOG(INFO) << "New channel event rx from ch id: " << new_event->channel_id
                                        << " what: " << new_event->event_type;
@@ -288,19 +294,26 @@ void ControlThread::event_dispatcher(bool &valid_event, pmt::pmt_t &msg)
                 }
             else if (msg_type_hash_code == command_event_type_hash_code_)
                 {
+                    LOG(INFO)<<"IF 2";
                     const auto new_event = boost::any_cast<command_event_sptr>(pmt::any_ref(msg));
                     DLOG(INFO) << "New command event rx from ch id: " << new_event->command_id
                                << " what: " << new_event->event_type;
 
                     if (new_event->command_id == 200)
                         {
+                            LOG(INFO)<<"IF 2.1";
                             apply_action(new_event->event_type);
                         }
                     else
                         {
+                            LOG(INFO)<<"IF 2 else 1";
                             if (new_event->command_id == 300)  // some TC commands require also actions from control_thread
                                 {
+                                    LOG(INFO)<<"IF 2 else 1 if 1";
+                                    
                                     apply_action(new_event->event_type);
+                                    LOG(INFO)<<"Done Apply action";
+
                                 }
                             flowgraph_->apply_action(new_event->command_id, new_event->event_type);
                         }
@@ -373,7 +386,9 @@ int ControlThread::run()
     sysv_queue_thread_ = std::thread(&ControlThread::sysv_queue_listener, this);
 
     // start the telecommand listener thread
+    LOG(INFO)<<"Reached line 379 in control_thread.cc";
     cmd_interface_.set_pvt(flowgraph_->get_pvt());
+    LOG(INFO)<<"fINISHED SET PVT IN CONTROL_THREAD.CC";
     cmd_interface_thread_ = std::thread(&ControlThread::telecommand_listener, this);
 
 #ifdef ENABLE_FPGA
@@ -386,9 +401,14 @@ int ControlThread::run()
     while (flowgraph_->running() && !stop_)
         {
             // read event messages, triggered by event signaling with a 100 ms timeout to perform low priority receiver management tasks
+            LOG(INFO)<<"Inside while";
+            LOG(INFO)<<"doing valid event";
             bool valid_event = control_queue_->timed_wait_and_pop(msg, 100);
+            LOG(INFO)<<"Done valid event which is "<<valid_event;
             // call the new sat dispatcher and receiver controller
+            LOG(INFO)<<"doing event dispatcher";
             event_dispatcher(valid_event, msg);
+            LOG(INFO)<<"DONE 1 iteration";
         }
     std::cout << "Stopping GNSS-SDR, please wait!\n";
     flowgraph_->stop();
@@ -465,6 +485,9 @@ bool ControlThread::read_assistance_from_XML()
     std::string glo_utc_xml_filename = configuration_->property("GNSS-SDR.SUPL_glo_utc_model_xml", glo_utc_default_xml_filename_);
     std::string gal_almanac_xml_filename = configuration_->property("GNSS-SDR.SUPL_gal_almanac_xml", gal_almanac_default_xml_filename_);
     std::string gps_almanac_xml_filename = configuration_->property("GNSS-SDR.SUPL_gps_almanac_xml", gps_almanac_default_xml_filename_);
+    std::string irn_eph_xml_filename = configuration_->property("GNSS-SDR.SUPL_irnss_ephemeris_xml", irn_eph_default_xml_filename_);
+    std::string irn_utc_xml_filename = configuration_->property("GNSS-SDR.SUPL_irnss_utc_model_xml", irn_utc_default_xml_filename_);
+    std::string irn_iono_xml_filename = configuration_->property("GNSS-SDR.SUPL_irnss_iono_xml", irn_iono_default_xml_filename_);
 
     if (configuration_->property("GNSS-SDR.AGNSS_XML_enabled", false) == true)
         {
@@ -482,6 +505,10 @@ bool ControlThread::read_assistance_from_XML()
             glo_utc_xml_filename = configuration_->property("GNSS-SDR.AGNSS_glo_utc_model_xml", glo_utc_default_xml_filename_);
             gal_almanac_xml_filename = configuration_->property("GNSS-SDR.AGNSS_gal_almanac_xml", gal_almanac_default_xml_filename_);
             gps_almanac_xml_filename = configuration_->property("GNSS-SDR.AGNSS_gps_almanac_xml", gps_almanac_default_xml_filename_);
+
+            // irn_eph_xml_filename = configuration_->property("GNSS-SDR.AGNSS_gps_ephemeris_xml", eph_default_xml_filename_);
+            // irn_utc_xml_filename = configuration_->property("GNSS-SDR.AGNSS_gps_utc_model_xml", utc_default_xml_filename_);
+            // irn_iono_xml_filename = configuration_->property("GNSS-SDR.AGNSS_gps_iono_xml", iono_default_xml_filename_);
         }
 
     std::cout << "Trying to read GNSS ephemeris from XML file(s)...\n";
@@ -627,6 +654,53 @@ bool ControlThread::read_assistance_from_XML()
                     flowgraph_->send_telemetry_msg(pmt::make_any(tmp_obj));
                     std::cout << "From XML file: Read GLONASS UTC model parameters.\n";
                     ret = true;
+                }
+        }
+    
+    if (configuration_->property("Channels_1I.count", 0) > 0)
+        {
+            if (supl_client_ephemeris_.load_ephemeris_xml(irn_eph_xml_filename) == true)
+                {
+            //         std::map<int, Irnss_Ephemeris>::const_iterator irnss_eph_iter;
+            //         for (irnss_eph_iter = supl_client_ephemeris_.irnss_ephemeris_map.cbegin();
+            //              irnss_eph_iter != supl_client_ephemeris_.irnss_ephemeris_map.cend();
+            //              irnss_eph_iter++)
+            //             {
+            //                 std::cout << "From XML file: Read NAV ephemeris for satellite " << Gnss_Satellite("IRNSS", irnss_eph_iter->second.PRN) << '\n';
+            //                 const std::shared_ptr<Irnss_Ephemeris> tmp_obj = std::make_shared<Irnss_Ephemeris>(irnss_eph_iter->second);
+            //                 flowgraph_->send_telemetry_msg(pmt::make_any(tmp_obj));
+            //             }
+            //         ret = true;
+            //     }
+
+            // if (supl_client_acquisition_.load_utc_xml(irn_utc_xml_filename) == true)
+            //     {
+            //         const std::shared_ptr<Irnss_Utc_Model> tmp_obj = std::make_shared<Irnss_Utc_Model>(supl_client_acquisition_.gps_utc);
+            //         flowgraph_->send_telemetry_msg(pmt::make_any(tmp_obj));
+            //         std::cout << "From XML file: Read GPS UTC model parameters.\n";
+            //         ret = true;
+            //     }
+
+            // if (supl_client_acquisition_.load_iono_xml(iono_xml_filename) == true)
+            //     {
+            //         const std::shared_ptr<Gps_Iono> tmp_obj = std::make_shared<Gps_Iono>(supl_client_acquisition_.gps_iono);
+            //         flowgraph_->send_telemetry_msg(pmt::make_any(tmp_obj));
+            //         std::cout << "From XML file: Read GPS ionosphere model parameters.\n";
+            //         ret = true;
+            //     }
+
+            // // if (supl_client_ephemeris_.load_gps_almanac_xml(gps_almanac_xml_filename) == true)
+            // //     {
+            // //         std::map<int, Gps_Almanac>::const_iterator gps_alm_iter;
+            // //         for (gps_alm_iter = supl_client_ephemeris_.gps_almanac_map.cbegin();
+            // //              gps_alm_iter != supl_client_ephemeris_.gps_almanac_map.cend();
+            // //              gps_alm_iter++)
+            // //             {
+            // //                 std::cout << "From XML file: Read GPS almanac for satellite " << Gnss_Satellite("GPS", gps_alm_iter->second.PRN) << '\n';
+            // //                 const std::shared_ptr<Gps_Almanac> tmp_obj = std::make_shared<Gps_Almanac>(gps_alm_iter->second);
+            // //                 flowgraph_->send_telemetry_msg(pmt::make_any(tmp_obj));
+            // //             }
+            // //         ret = true;
                 }
         }
 

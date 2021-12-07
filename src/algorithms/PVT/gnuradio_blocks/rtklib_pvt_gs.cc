@@ -43,6 +43,9 @@
 #include "gps_ephemeris.h"
 #include "gps_iono.h"
 #include "gps_utc_model.h"
+#include "irnss_ephemeris.h"
+#include "irnss_iono.h"
+#include "irnss_utc_model.h"
 #include "gpx_printer.h"
 #include "kml_printer.h"
 #include "monitor_ephemeris_udp_sink.h"
@@ -125,6 +128,8 @@ rtklib_pvt_gs::rtklib_pvt_gs(uint32_t nchannels,
     d_mapStringValues["B1"] = evBDS_B1;
     d_mapStringValues["B2"] = evBDS_B2;
     d_mapStringValues["B3"] = evBDS_B3;
+    d_mapStringValues["1I"] = evIRN_1I;
+
 
     d_initial_carrier_phase_offset_estimation_rads = std::vector<double>(nchannels, 0.0);
     d_channel_initialized = std::vector<bool>(nchannels, false);
@@ -508,6 +513,11 @@ rtklib_pvt_gs::rtklib_pvt_gs(uint32_t nchannels,
     d_gps_ephemeris_sptr_type_hash_code = typeid(std::shared_ptr<Gps_Ephemeris>).hash_code();
     d_gps_iono_sptr_type_hash_code = typeid(std::shared_ptr<Gps_Iono>).hash_code();
     d_gps_utc_model_sptr_type_hash_code = typeid(std::shared_ptr<Gps_Utc_Model>).hash_code();
+
+    d_irnss_ephemeris_sptr_type_hash_code = typeid(std::shared_ptr<Irnss_Ephemeris>).hash_code();
+    d_irnss_iono_sptr_type_hash_code = typeid(std::shared_ptr<Irnss_Iono>).hash_code();
+    d_irnss_utc_model_sptr_type_hash_code = typeid(std::shared_ptr<Irnss_Utc_Model>).hash_code();
+
     d_gps_cnav_ephemeris_sptr_type_hash_code = typeid(std::shared_ptr<Gps_CNAV_Ephemeris>).hash_code();
     d_gps_cnav_iono_sptr_type_hash_code = typeid(std::shared_ptr<Gps_CNAV_Iono>).hash_code();
     d_gps_cnav_utc_model_sptr_type_hash_code = typeid(std::shared_ptr<Gps_CNAV_Utc_Model>).hash_code();
@@ -592,6 +602,31 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                     else
                         {
                             LOG(INFO) << "Failed to save GPS L1 CA Ephemeris, map is empty";
+                        }
+                    
+                    file_name = d_xml_base_path + "irnss_ephemeris.xml";
+                    if (d_internal_pvt_solver->irnss_ephemeris_map.empty() == false)
+                        {
+                            std::ofstream ofs;
+                            try
+                                {
+                                    ofs.open(file_name.c_str(), std::ofstream::trunc | std::ofstream::out);
+                                    boost::archive::xml_oarchive xml(ofs);
+                                    xml << boost::serialization::make_nvp("GNSS-SDR_ephemeris_map", d_internal_pvt_solver->irnss_ephemeris_map);
+                                    LOG(INFO) << "Saved IRNSS L5 CA Ephemeris map data";
+                                }
+                            catch (const boost::archive::archive_exception& e)
+                                {
+                                    LOG(WARNING) << e.what();
+                                }
+                            catch (const std::exception& e)
+                                {
+                                    LOG(WARNING) << e.what();
+                                }
+                        }
+                    else
+                        {
+                            LOG(INFO) << "Failed to save IRNSS L5 CA Ephemeris, map is empty";
                         }
 
                     // save Galileo E1 ephemeris to XML file
@@ -684,6 +719,35 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                             LOG(INFO) << "Failed to save GPS UTC model parameters, not valid data";
                         }
 
+                    file_name = d_xml_base_path + "irnss_utc_model.xml";
+                    if (d_internal_pvt_solver->irnss_utc_model.valid)
+                        {
+                            std::ofstream ofs;
+                            try
+                                {
+                                    ofs.open(file_name.c_str(), std::ofstream::trunc | std::ofstream::out);
+                                    boost::archive::xml_oarchive xml(ofs);
+                                    xml << boost::serialization::make_nvp("GNSS-SDR_utc_model", d_internal_pvt_solver->irnss_utc_model);
+                                    LOG(INFO) << "Saved irnss UTC model parameters";
+                                }
+                            catch (const std::ofstream::failure& e)
+                                {
+                                    LOG(WARNING) << "Problem opening output XML file";
+                                }
+                            catch (const boost::archive::archive_exception& e)
+                                {
+                                    LOG(WARNING) << e.what();
+                                }
+                            catch (const std::exception& e)
+                                {
+                                    LOG(WARNING) << e.what();
+                                }
+                        }
+                    else
+                        {
+                            LOG(INFO) << "Failed to save irnss UTC model parameters, not valid data";
+                        }
+
                     // Save Galileo UTC model parameters
                     file_name = d_xml_base_path + "gal_utc_model.xml";
                     if (d_internal_pvt_solver->galileo_utc_model.Delta_tLS != 0.0)
@@ -742,6 +806,35 @@ rtklib_pvt_gs::~rtklib_pvt_gs()
                     else
                         {
                             LOG(INFO) << "Failed to save GPS ionospheric model parameters, not valid data";
+                        }
+                    
+                    file_name = d_xml_base_path + "irnss_iono.xml";
+                    if (d_internal_pvt_solver->irnss_iono.valid == true)
+                        {
+                            std::ofstream ofs;
+                            try
+                                {
+                                    ofs.open(file_name.c_str(), std::ofstream::trunc | std::ofstream::out);
+                                    boost::archive::xml_oarchive xml(ofs);
+                                    xml << boost::serialization::make_nvp("GNSS-SDR_iono_model", d_internal_pvt_solver->irnss_iono);
+                                    LOG(INFO) << "Saved irnss ionospheric model parameters";
+                                }
+                            catch (const boost::archive::archive_exception& e)
+                                {
+                                    LOG(WARNING) << e.what();
+                                }
+                            catch (const std::ofstream::failure& e)
+                                {
+                                    LOG(WARNING) << "Problem opening output XML file";
+                                }
+                            catch (const std::exception& e)
+                                {
+                                    LOG(WARNING) << e.what();
+                                }
+                        }
+                    else
+                        {
+                            LOG(INFO) << "Failed to save irnss ionospheric model parameters, not valid data";
                         }
 
                     // Save GPS CNAV iono parameters
@@ -1102,7 +1195,7 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                     // send the new eph to the eph monitor (if enabled)
                     if (d_flag_monitor_ephemeris_enabled)
                         {
-                            d_eph_udp_sink_ptr->write_gps_ephemeris(gps_eph);
+                            // d_eph_udp_sink_ptr->write_gps_ephemeris(gps_eph);
                         }
                     // update/insert new ephemeris record to the global ephemeris map
                     if (d_rinex_output_enabled && d_rp->is_rinex_header_written())  // The header is already written, we can now log the navigation message data
@@ -1497,6 +1590,81 @@ void rtklib_pvt_gs::msg_handler_telemetry(const pmt::pmt_t& msg)
                         }
                     DLOG(INFO) << "New BeiDou DNAV almanac record has arrived ";
                 }
+            
+            // ************************* IRNSS telemetry *************************
+            else if (msg_type_hash_code == d_irnss_ephemeris_sptr_type_hash_code)
+                {
+                    // ### IRNSS EPHEMERIS ###
+                    const auto irnss_eph = boost::any_cast<std::shared_ptr<Irnss_Ephemeris>>(pmt::any_ref(msg));
+                    DLOG(INFO) << "Ephemeris record has arrived from SAT ID "
+                               << irnss_eph->i_satellite_PRN // << " (Block "
+                            //    << gps_eph->satelliteBlock[gps_eph->PRN] << ")"
+                               << "inserted with Toe=" << irnss_eph->d_Toe << " and irnss Week="
+                               << irnss_eph->i_IRNSS_week;
+
+                    // todo: Send only new sets of ephemeris (new TOE), not sent to the client
+                    // send the new eph to the eph monitor (if enabled)
+                    if (d_flag_monitor_ephemeris_enabled)
+                        {
+                            // d_eph_udp_sink_ptr->write_irnss_ephemeris(irnss_eph);
+                        }
+                    // update/insert new ephemeris record to the global ephemeris map
+                    if (d_rinex_output_enabled && d_rp->is_rinex_header_written())  // The header is already written, we can now log the navigation message data
+                        {
+                            bool new_annotation = false;
+                            if (d_internal_pvt_solver->irnss_ephemeris_map.find(irnss_eph->i_satellite_PRN) == d_internal_pvt_solver->irnss_ephemeris_map.cend())
+                                {
+                                    new_annotation = true;
+                                }
+                            else
+                                {
+                                    if (d_internal_pvt_solver->irnss_ephemeris_map[irnss_eph->i_satellite_PRN].d_Toe != irnss_eph->d_Toe)
+                                        {
+                                            new_annotation = true;
+                                        }
+                                }
+                            if (new_annotation == true)
+                                {
+                                    // New record!
+                                    std::map<int32_t, Irnss_Ephemeris> new_eph;
+                                    new_eph[irnss_eph->i_satellite_PRN] = *irnss_eph;
+                                    d_rp->log_rinex_nav_irnss_nav(d_type_of_rx, new_eph);
+                                }
+                        }
+                    d_internal_pvt_solver->irnss_ephemeris_map[irnss_eph->i_satellite_PRN] = *irnss_eph;
+                    if (d_enable_rx_clock_correction == true)
+                        {
+                            d_user_pvt_solver->irnss_ephemeris_map[irnss_eph->i_satellite_PRN] = *irnss_eph;
+                        }
+                    // if (gps_eph->SV_health != 0)
+                    //     {
+                    //         std::cout << TEXT_RED << "Satellite " << Gnss_Satellite(std::string("GPS"), gps_eph->PRN)
+                    //                   << " is not healthy, not used for navigation" << TEXT_RESET << '\n';
+                    //     }
+                }
+            else if (msg_type_hash_code == d_irnss_iono_sptr_type_hash_code)
+                {
+                    // ### IRNSS IONO ###
+                    const auto irnss_iono = boost::any_cast<std::shared_ptr<Irnss_Iono>>(pmt::any_ref(msg));
+                    d_internal_pvt_solver->irnss_iono = *irnss_iono;
+                    if (d_enable_rx_clock_correction == true)
+                        {
+                            d_user_pvt_solver->irnss_iono = *irnss_iono;
+                        }
+                    DLOG(INFO) << "New IONO record has arrived ";
+                }
+            else if (msg_type_hash_code == d_irnss_utc_model_sptr_type_hash_code)
+                {
+                    // ### irnss UTC MODEL ###
+                    const auto irnss_utc_model = boost::any_cast<std::shared_ptr<Irnss_Utc_Model>>(pmt::any_ref(msg));
+                    d_internal_pvt_solver->irnss_utc_model = *irnss_utc_model;
+                    if (d_enable_rx_clock_correction == true)
+                        {
+                            d_user_pvt_solver->irnss_utc_model = *irnss_utc_model;
+                        }
+                    DLOG(INFO) << "New UTC record has arrived ";
+                }
+
             else
                 {
                     LOG(WARNING) << "msg_handler_telemetry unknown object type!";
@@ -1533,6 +1701,10 @@ std::map<int, Gps_Ephemeris> rtklib_pvt_gs::get_gps_ephemeris_map() const
     return d_internal_pvt_solver->gps_ephemeris_map;
 }
 
+std::map<int, Irnss_Ephemeris> rtklib_pvt_gs::get_irnss_ephemeris_map() const
+{
+    return d_internal_pvt_solver->irnss_ephemeris_map;
+}
 
 std::map<int, Gps_Almanac> rtklib_pvt_gs::get_gps_almanac_map() const
 {
@@ -1567,6 +1739,8 @@ std::map<int, Beidou_Dnav_Almanac> rtklib_pvt_gs::get_beidou_dnav_almanac_map() 
 void rtklib_pvt_gs::clear_ephemeris()
 {
     d_internal_pvt_solver->gps_ephemeris_map.clear();
+    d_internal_pvt_solver->irnss_ephemeris_map.clear();
+
     d_internal_pvt_solver->gps_almanac_map.clear();
     d_internal_pvt_solver->galileo_ephemeris_map.clear();
     d_internal_pvt_solver->galileo_almanac_map.clear();
@@ -1575,6 +1749,8 @@ void rtklib_pvt_gs::clear_ephemeris()
     if (d_enable_rx_clock_correction == true)
         {
             d_user_pvt_solver->gps_ephemeris_map.clear();
+            d_user_pvt_solver->irnss_ephemeris_map.clear();
+
             d_user_pvt_solver->gps_almanac_map.clear();
             d_user_pvt_solver->galileo_ephemeris_map.clear();
             d_user_pvt_solver->galileo_almanac_map.clear();
@@ -1725,6 +1901,7 @@ void rtklib_pvt_gs::apply_rx_clock_offset(std::map<int, Gnss_Synchro>& observabl
                     observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ1 * TWO_PI;
                     break;
                 case evGPS_L5:
+                case evIRN_1I:
                 case evGAL_5X:
                     observables_iter->second.Carrier_phase_rads -= rx_clock_offset_s * FREQ5 * TWO_PI;
                     break;
@@ -1827,6 +2004,7 @@ void rtklib_pvt_gs::initialize_and_apply_carrier_phase_offset()
                             wavelength_m = SPEED_OF_LIGHT_M_S / FREQ1;
                             break;
                         case evGPS_L5:
+                        case evIRN_1I:
                         case evGAL_5X:
                             wavelength_m = SPEED_OF_LIGHT_M_S / FREQ5;
                             break;
@@ -1889,6 +2067,8 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                     if (in[i][epoch].Flag_valid_pseudorange)
                         {
                             const auto tmp_eph_iter_gps = d_internal_pvt_solver->gps_ephemeris_map.find(in[i][epoch].PRN);
+                            const auto tmp_eph_iter_irnss = d_internal_pvt_solver->irnss_ephemeris_map.find(in[i][epoch].PRN);
+
                             const auto tmp_eph_iter_gal = d_internal_pvt_solver->galileo_ephemeris_map.find(in[i][epoch].PRN);
                             const auto tmp_eph_iter_cnav = d_internal_pvt_solver->gps_cnav_ephemeris_map.find(in[i][epoch].PRN);
                             const auto tmp_eph_iter_glo_gnav = d_internal_pvt_solver->glonass_gnav_ephemeris_map.find(in[i][epoch].PRN);
@@ -1900,6 +2080,14 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                                 {
                                     const uint32_t prn_aux = tmp_eph_iter_gps->second.PRN;
                                     if ((prn_aux == in[i][epoch].PRN) && (std::string(in[i][epoch].Signal) == std::string("1C")) && (tmp_eph_iter_gps->second.SV_health == 0))
+                                        {
+                                            store_valid_observable = true;
+                                        }
+                                }
+                            if (tmp_eph_iter_irnss != d_internal_pvt_solver->irnss_ephemeris_map.cend())
+                                {
+                                    const uint32_t prn_aux = tmp_eph_iter_irnss->second.i_satellite_PRN;
+                                    if ((prn_aux == in[i][epoch].PRN) && (std::string(in[i][epoch].Signal) == std::string("1I")) && (tmp_eph_iter_gps->second.SV_health == 0))
                                         {
                                             store_valid_observable = true;
                                         }
@@ -1957,6 +2145,15 @@ int rtklib_pvt_gs::work(int noutput_items, gr_vector_const_void_star& input_item
                                                             d_rtcm_printer->lock_time(d_internal_pvt_solver->gps_ephemeris_map.find(in[i][epoch].PRN)->second, in[i][epoch].RX_time, in[i][epoch]);  // keep track of locking time
                                                         }
                                                 }
+
+                                            if (d_internal_pvt_solver->irnss_ephemeris_map.empty() == false)
+                                                {
+                                                    if (tmp_eph_iter_irnss != d_internal_pvt_solver->irnss_ephemeris_map.cend())
+                                                        {
+                                                            // d_rtcm_printer->lock_time(d_internal_pvt_solver->irnss_ephemeris_map.find(in[i][epoch].PRN)->second, in[i][epoch].RX_time, in[i][epoch]);  // keep track of locking time
+                                                        }
+                                                }
+
                                             if (d_internal_pvt_solver->galileo_ephemeris_map.empty() == false)
                                                 {
                                                     if (tmp_eph_iter_gal != d_internal_pvt_solver->galileo_ephemeris_map.cend())

@@ -38,6 +38,7 @@ class Glonass_Gnav_Utc_Model;
 class Gnss_Synchro;
 class Gps_CNAV_Ephemeris;
 class Gps_Ephemeris;
+class Irnss_Ephemeris;
 class Rtcm;
 class Rtklib_Solver;
 
@@ -85,6 +86,8 @@ public:
         bool enable_rx_clock_correction);
 
     uint32_t lock_time(const Gps_Ephemeris& eph, double obs_time, const Gnss_Synchro& gnss_synchro);
+    // uint32_t lock_time(const Ips_Ephemeris& eph, double obs_time, const Gnss_Synchro& gnss_synchro);
+
     uint32_t lock_time(const Gps_CNAV_Ephemeris& eph, double obs_time, const Gnss_Synchro& gnss_synchro);
     uint32_t lock_time(const Galileo_Ephemeris& eph, double obs_time, const Gnss_Synchro& gnss_synchro);
 

@@ -210,7 +210,11 @@ bool gps_l1_ca_telemetry_decoder_gs::gps_word_parityCheck(uint32_t gpsword)
 void gps_l1_ca_telemetry_decoder_gs::set_satellite(const Gnss_Satellite &satellite)
 {
     d_nav = Gps_Navigation_Message();
+    LOG(INFO)<<"D NAV MESSAGE CREATED";
+
     d_satellite = Gnss_Satellite(satellite.get_system(), satellite.get_PRN());
+    LOG(INFO)<<"GOT D SATTELITE : "<<d_satellite;
+
     DLOG(INFO) << "Setting decoder Finite State Machine to satellite " << d_satellite;
     d_nav.set_satellite_PRN(d_satellite.get_PRN());
     DLOG(INFO) << "Navigation Satellite set to " << d_satellite;

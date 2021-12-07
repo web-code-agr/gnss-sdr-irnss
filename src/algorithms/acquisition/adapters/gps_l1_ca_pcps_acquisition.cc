@@ -151,13 +151,28 @@ void GpsL1CaPcpsAcquisition::init()
 void GpsL1CaPcpsAcquisition::set_local_code()
 {
     std::vector<std::complex<float>> code(code_length_);
+    LOG(INFO)<<"CODE LENGTH IS "<<code_length_;
+    LOG(INFO)<<"CODE LENGTH IS "<<code_length_;
+    LOG(INFO)<<"CODE LENGTH IS "<<code_length_;
+    LOG(INFO)<<"CODE LENGTH IS "<<code_length_;
+    LOG(INFO)<<"CODE LENGTH IS "<<code_length_;
 
     if (acq_parameters_.use_automatic_resampler)
         {
+            LOG(INFO)<<"automatic resampler done";
+    LOG(INFO)<<"automatic resampler done";
+    LOG(INFO)<<"automatic resampler done";
+    LOG(INFO)<<"automatic resampler done";
+    LOG(INFO)<<"automatic resampler done";
             gps_l1_ca_code_gen_complex_sampled(code, gnss_synchro_->PRN, acq_parameters_.resampled_fs, 0);
         }
     else
         {
+            LOG(INFO)<<"not automatic resampler done";
+    LOG(INFO)<<"not automatic resampler done";
+    LOG(INFO)<<"not automatic resampler done";
+    LOG(INFO)<<"not automatic resampler done";
+    LOG(INFO)<<"not automatic resampler done";
             gps_l1_ca_code_gen_complex_sampled(code, gnss_synchro_->PRN, acq_parameters_.fs_in, 0);
         }
     own::span<gr_complex> code_span(code_.data(), vector_length_);
@@ -167,6 +182,11 @@ void GpsL1CaPcpsAcquisition::set_local_code()
         }
 
     acquisition_->set_local_code(code_.data());
+    LOG(INFO)<<" acquisition block done";
+    LOG(INFO)<<" acquisition block done";
+    LOG(INFO)<<" acquisition block done";
+    LOG(INFO)<<" acquisition block done";
+    LOG(INFO)<<" acquisition block done";
 }
 
 

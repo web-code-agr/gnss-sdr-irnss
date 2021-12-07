@@ -21,6 +21,7 @@
 
 #include "gnss_flowgraph.h"
 #include "GPS_L1_CA.h"
+#include "IRNSS_at_1.h"
 #include "GPS_L2C.h"
 #include "GPS_L5.h"
 #include "Galileo_E1.h"
@@ -162,10 +163,20 @@ void GNSSFlowgraph::init()
     mapStringValues_["2G"] = evGLO_2G;
     mapStringValues_["B1"] = evBDS_B1;
     mapStringValues_["B3"] = evBDS_B3;
+    mapStringValues_["1I"] = evIRN_1I;
+
+    LOG(INFO) << "Top Block created";
+
 
     // fill the signals queue with the satellites ID's to be searched by the acquisition
     set_signals_list();
+
+    LOG(INFO) << "Signal list done";
+
     set_channels_state();
+
+    LOG(INFO) << "Channel state done";
+
     DLOG(INFO) << "Blocks instantiated. " << channels_count_ << " channels.";
 
     /*
@@ -1050,6 +1061,7 @@ int GNSSFlowgraph::connect_signal_sources_to_signal_conditioners()
             return 1;
         }
     unsigned int signal_conditioner_ID = 0;
+    LOG(INFO)<<sources_count_<<" ARE THE SOURCES COUNT";
     for (int i = 0; i < sources_count_; i++)
         {
             try
@@ -1061,6 +1073,7 @@ int GNSSFlowgraph::connect_signal_sources_to_signal_conditioners()
                     if (src->implementation() == "Raw_Array_Signal_Source")
                         {
                             // Multichannel Array
+                            LOG(INFO)<<"ENTERING RAW ARRAY SIGNAL SOURCE";
                             std::cout << "ARRAY MODE\n";
                             for (int j = 0; j < GNSS_SDR_ARRAY_SIGNAL_CONDITIONER_CHANNELS; j++)
                                 {
@@ -1071,7 +1084,7 @@ int GNSSFlowgraph::connect_signal_sources_to_signal_conditioners()
                     else
                         {
                             auto RF_Channels = src->getRfChannels();
-
+                            LOG(INFO)<<"GOT RF CHANNELS: "<<RF_Channels;
                             for (auto j = 0U; j < RF_Channels; ++j)
                                 {
                                     // Connect the multichannel signal source to multiple signal conditioners
@@ -1081,6 +1094,7 @@ int GNSSFlowgraph::connect_signal_sources_to_signal_conditioners()
                                     // Check configuration inconsistencies
                                     if (output_size != input_size)
                                         {
+                                            LOG(INFO)<<"Output not equal to input";
                                             help_hint_ += " * The Signal Source implementation " + src->implementation() + " has an output with a ";
                                             help_hint_ += src->role() + ".item_size of " + std::to_string(output_size);
                                             help_hint_ += " bytes, but it is connected to the Signal Conditioner implementation ";
@@ -1092,8 +1106,10 @@ int GNSSFlowgraph::connect_signal_sources_to_signal_conditioners()
 
                                     if (src->get_right_block()->output_signature()->max_streams() > 1 or src->get_right_block()->output_signature()->max_streams() == -1)
                                         {
+                                            LOG(INFO)<<"Inside first if";
                                             if (sig_conditioner_.size() > signal_conditioner_ID)
                                                 {
+                                                    LOG(INFO) << signal_conditioner_ID <<" IS SIGNAL CONDITIONER ID";
                                                     LOG(INFO) << "connecting sig_source_ " << i << " stream " << j << " to conditioner " << signal_conditioner_ID;
                                                     top_block_->connect(src->get_right_block(), j, sig_conditioner_.at(signal_conditioner_ID)->get_left_block(), 0);
                                                 }
@@ -1212,10 +1228,12 @@ int GNSSFlowgraph::connect_signal_conditioners_to_channels()
             try
                 {
                     selected_signal_conditioner_ID = configuration_->property("Channel" + std::to_string(i) + ".RF_channel_ID", 0);
+                    LOG(INFO)<<selected_signal_conditioner_ID<<" IS THE SIGNAL CONDITIONER ID";
                 }
             catch (const std::exception& e)
                 {
                     LOG(WARNING) << e.what();
+                    LOG(INFO)<<"CANT GET THE SIGNAL CONDITIONER ID";
                 }
             try
                 {
@@ -1223,6 +1241,7 @@ int GNSSFlowgraph::connect_signal_conditioners_to_channels()
                     if (use_acq_resampler == true)
                         {
                             // create acquisition resamplers if required
+                            LOG(INFO)<<"USE AC RESAMPLER TRUE";
                             double resampler_ratio = 1.0;
                             double acq_fs = fs;
                             // find the signal associated to this channel
@@ -1258,10 +1277,13 @@ int GNSSFlowgraph::connect_signal_conditioners_to_channels()
                                 case evBDS_B3:
                                     acq_fs = fs;
                                     break;
+                                case evIRN_1I:
+                                    acq_fs = IRNSS_L5_OPT_ACQ_FS_HZ;
+                                    break;
                                 default:
                                     break;
                                 }
-
+                            LOG(INFO)<<acq_fs<<" ACQ FREQ. "<<fs<<" REAL FREQUENCY.";
                             if (acq_fs < fs)
                                 {
                                     // check if the resampler is already created for the channel system/signal and for the specific RF Channel
@@ -1324,6 +1346,7 @@ int GNSSFlowgraph::connect_signal_conditioners_to_channels()
                         }
                     else
                         {
+                            LOG(INFO)<<"INSIDE ELSE ";
                             top_block_->connect(sig_conditioner_.at(selected_signal_conditioner_ID)->get_right_block(), 0,
                                 channels_.at(i)->get_left_block_acq(), 0);
                         }
@@ -1332,7 +1355,7 @@ int GNSSFlowgraph::connect_signal_conditioners_to_channels()
                 }
             catch (const std::exception& e)
                 {
-                    LOG(ERROR) << "Can't connect signal conditioner " << selected_signal_conditioner_ID << " to channel " << i << ": " << e.what();
+                    LOG(INFO) << "Can't connect signal conditioner " << selected_signal_conditioner_ID << " to channel " << i << ": " << e.what();
                     top_block_->disconnect_all();
                     return 1;
                 }
@@ -1378,21 +1401,25 @@ int GNSSFlowgraph::disconnect_signal_conditioners_from_channels()
 
 int GNSSFlowgraph::connect_channels_to_observables()
 {
+    LOG(INFO)<<"ENTERING CONNECT CHANNELS TO OBESERVABLE";
     for (int i = 0; i < channels_count_; i++)
         {
             try
                 {
                     top_block_->connect(channels_.at(i)->get_right_block(), 0,
                         observables_->get_left_block(), i);
+                    LOG(INFO)<<"TOP BLOCK CONNECTED FOR CHANNEL : "<<i;
                 }
             catch (const std::exception& e)
                 {
-                    LOG(ERROR) << "Can't connect channel " << i << " to observables: " << e.what();
+                    LOG(INFO) << "Can't connect channel " << i << " to observables: " << e.what();
                     top_block_->disconnect_all();
                     return 1;
                 }
         }
-    DLOG(INFO) << "Channel blocks successfully connected to the Observables block";
+    LOG(INFO) << "Channel blocks successfully connected to the Observables block";
+    LOG(INFO) << "RETURNING 0";
+
     return 0;
 }
 
@@ -1421,17 +1448,22 @@ int GNSSFlowgraph::connect_observables_to_pvt()
 {
     // Connect the observables output of each channel to the PVT block
     try
-        {
+        {   
+            LOG(INFO)<<channels_count_<<" IS THE CHANNELS COUNT.";
             for (int i = 0; i < channels_count_; i++)
                 {
                     top_block_->connect(observables_->get_right_block(), i, pvt_->get_left_block(), i);
+                    LOG(INFO)<<"TOPBLOCK CONNECT";
                     top_block_->msg_connect(channels_.at(i)->get_right_block(), pmt::mp("telemetry"), pvt_->get_left_block(), pmt::mp("telemetry"));
+                    LOG(INFO)<<"TOPBLOCK MSG CONNECT";
                 }
 
             top_block_->msg_connect(observables_->get_right_block(), pmt::mp("status"), channels_status_, pmt::mp("status"));
-
+            LOG(INFO)<<"TOPBLOCK MSG CONNECT 1";
             top_block_->msg_connect(pvt_->get_left_block(), pmt::mp("pvt_to_observables"), observables_->get_right_block(), pmt::mp("pvt_to_observables"));
+            LOG(INFO)<<"TOPBLOCK MSG CONNECT 2";
             top_block_->msg_connect(pvt_->get_left_block(), pmt::mp("status"), channels_status_, pmt::mp("status"));
+            LOG(INFO)<<"TOPBLOCK MSG CONNECT 3";
         }
     catch (const std::exception& e)
         {
@@ -1682,6 +1714,7 @@ void GNSSFlowgraph::check_signal_conditioners()
 void GNSSFlowgraph::assign_channels()
 {
     // Put channels fixed to a given satellite at the beginning of the vector, then the rest
+    LOG(INFO)<<"INSIDE ASSIGN CHANNELS";
     std::vector<unsigned int> vector_of_channels;
     for (int i = 0; i < channels_count_; i++)
         {
@@ -1689,6 +1722,7 @@ void GNSSFlowgraph::assign_channels()
             try
                 {
                     sat = configuration_->property("Channel" + std::to_string(i) + ".satellite", 0);
+                    LOG(INFO)<<"SAT ASSIGN TO CHANNEL : "<<i;
                 }
             catch (const std::exception& e)
                 {
@@ -1697,22 +1731,38 @@ void GNSSFlowgraph::assign_channels()
             if (sat == 0)
                 {
                     vector_of_channels.push_back(i);
+                    LOG(INFO)<<"SAT IS 0";
                 }
             else
                 {
                     auto it = vector_of_channels.begin();
                     it = vector_of_channels.insert(it, i);
+                    LOG(INFO)<<"SAT ISNT 0";
                 }
         }
 
     // Assign satellites to channels in the initialization
     for (unsigned int& i : vector_of_channels)
         {
+            LOG(INFO)<<i<<" ITERATING VECTOR OF CHANNELS";
             const std::string gnss_signal = channels_.at(i)->get_signal().get_signal_str();  // use channel's implicit signal
+            LOG(INFO)<<"GNSS SIGNAL CREATED "<<gnss_signal;
+            LOG(INFO)<<"GNSS SIGNAL CREATED "<<gnss_signal;
+            LOG(INFO)<<"GNSS SIGNAL CREATED "<<gnss_signal;
+            LOG(INFO)<<"GNSS SIGNAL CREATED "<<gnss_signal;
+            LOG(INFO)<<"GNSS SIGNAL CREATED "<<gnss_signal;
+            LOG(INFO)<<"GNSS SIGNAL CREATED "<<gnss_signal;
             unsigned int sat = 0;
             try
                 {
                     sat = configuration_->property("Channel" + std::to_string(i) + ".satellite", 0);
+                    LOG(INFO)<<sat;
+                    LOG(INFO)<<"CONFIGURATION PROPERTY SET";
+                    LOG(INFO)<<"CONFIGURATION PROPERTY SET";
+                    LOG(INFO)<<"CONFIGURATION PROPERTY SET";
+                    LOG(INFO)<<"CONFIGURATION PROPERTY SET";
+                    LOG(INFO)<<"CONFIGURATION PROPERTY SET";
+                    LOG(INFO)<<"CONFIGURATION PROPERTY SET";
                 }
             catch (const std::exception& e)
                 {
@@ -1724,7 +1774,19 @@ void GNSSFlowgraph::assign_channels()
                     float estimated_doppler;
                     double RX_time;
                     bool is_primary_freq;
+                    LOG(INFO)<<"SAT IS 0 prev";
+                    LOG(INFO)<<"SAT IS 0 prev";
+                    LOG(INFO)<<"SAT IS 0 prev";
+                    LOG(INFO)<<"SAT IS 0 prev";
+                    LOG(INFO)<<"SAT IS 0 prev";
                     channels_.at(i)->set_signal(search_next_signal(gnss_signal, false, is_primary_freq, assistance_available, estimated_doppler, RX_time));
+                    LOG(INFO)<<"SAT IS 0";
+                    LOG(INFO)<<"SAT IS 0";
+                    LOG(INFO)<<"SAT IS 0";
+                    LOG(INFO)<<"SAT IS 0";
+                    LOG(INFO)<<"SAT IS 0";
+                    LOG(INFO)<<"SAT IS 0";
+                    LOG(INFO)<<"Sat os "<<sat;
                 }
             else
                 {
@@ -1733,6 +1795,7 @@ void GNSSFlowgraph::assign_channels()
                     switch (mapStringValues_[gnss_signal])
                         {
                         case evGPS_1C:
+                            LOG(INFO)<<"INSIDE GPS";
                             gnss_system = "GPS";
                             signal_value = Gnss_Signal(Gnss_Satellite(gnss_system, sat), gnss_signal);
                             available_GPS_1C_signals_.remove(signal_value);
@@ -1797,6 +1860,12 @@ void GNSSFlowgraph::assign_channels()
                             signal_value = Gnss_Signal(Gnss_Satellite(gnss_system, sat), gnss_signal);
                             available_BDS_B3_signals_.remove(signal_value);
                             break;
+                        case evIRN_1I:
+                            LOG(INFO)<<"INSIDER IRNSS";
+                            gnss_system = "IRNSS";
+                            signal_value = Gnss_Signal(Gnss_Satellite(gnss_system, sat), gnss_signal);
+                            available_IRNSS_1I_signals_.remove(signal_value);
+                            break;
 
                         default:
                             LOG(ERROR) << "This should not happen :-(";
@@ -1809,6 +1878,19 @@ void GNSSFlowgraph::assign_channels()
                     channels_.at(i)->set_signal(signal_value);
                 }
         }
+    LOG(INFO)<<"ENDING ASSIGN CHANNELS";
+        LOG(INFO)<<"ENDING ASSIGN CHANNELS";
+
+    LOG(INFO)<<"ENDING ASSIGN CHANNELS";
+
+    LOG(INFO)<<"ENDING ASSIGN CHANNELS";
+
+    LOG(INFO)<<"ENDING ASSIGN CHANNELS";
+
+    LOG(INFO)<<"ENDING ASSIGN CHANNELS";
+
+    LOG(INFO)<<"ENDING ASSIGN CHANNELS";
+
 }
 
 
@@ -1908,6 +1990,10 @@ void GNSSFlowgraph::push_back_signal(const Gnss_Signal& gs)
             available_BDS_B3_signals_.remove(gs);
             available_BDS_B3_signals_.push_back(gs);
             break;
+        case evIRN_1I:
+            available_IRNSS_1I_signals_.remove(gs);
+            available_IRNSS_1I_signals_.push_back(gs);
+            break;
 
         default:
             LOG(ERROR) << "This should not happen :-(";
@@ -1962,6 +2048,9 @@ void GNSSFlowgraph::remove_signal(const Gnss_Signal& gs)
 
         case evBDS_B3:
             available_BDS_B3_signals_.remove(gs);
+            break;
+        case evIRN_1I:
+            available_IRNSS_1I_signals_.remove(gs);
             break;
 
         default:
@@ -2263,6 +2352,16 @@ void GNSSFlowgraph::priorize_satellites(const std::vector<std::pair<int, Gnss_Sa
                             available_GAL_E6_signals_.push_front(gs);
                         }
                 }
+            else if (visible_satellite.second.get_system() == "IRNSS")
+                {
+                    gs = Gnss_Signal(visible_satellite.second, "1I");
+                    old_size = available_IRNSS_1I_signals_.size();
+                    available_IRNSS_1I_signals_.remove(gs);
+                    if (old_size > available_IRNSS_1I_signals_.size())
+                        {
+                            available_IRNSS_1I_signals_.push_front(gs);
+                        }
+                }
         }
 }
 
@@ -2352,6 +2451,9 @@ void GNSSFlowgraph::set_signals_list()
         11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
         30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
         50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63};
+    
+    std::set<unsigned int> available_irnss_prn = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+        11, 12, 13, 14};
 
     std::string sv_list = configuration_->property("Galileo.prns", std::string(""));
 
@@ -2553,6 +2655,46 @@ void GNSSFlowgraph::set_signals_list()
                 }
         }
 
+    sv_list = configuration_->property("IRNSS.prns", std::string(""));
+
+    if (sv_list.length() > 0)
+        {
+            // Reset the available prns:
+            std::set<unsigned int> tmp_set;
+            boost::tokenizer<> tok(sv_list);
+            std::transform(tok.begin(), tok.end(), std::inserter(tmp_set, tmp_set.begin()),
+                boost::lexical_cast<unsigned int, std::string>);
+
+            if (!tmp_set.empty())
+                {
+                    available_irnss_prn = tmp_set;
+                }
+        }
+
+    sv_banned = configuration_->property("GNSS-SDR.IRNSS_banned_prns", std::string(""));
+    if (!sv_banned.empty())
+        {
+            std::stringstream ss(sv_banned);
+            while (ss.good())
+                {
+                    std::string substr;
+                    std::getline(ss, substr, ',');
+                    try
+                        {
+                            auto banned = static_cast<unsigned int>(std::stoi(substr));
+                            available_irnss_prn.erase(banned);
+                        }
+                    catch (const std::invalid_argument& ia)
+                        {
+                            std::cerr << "Invalid argument at GNSS-SDR.IRNSS_banned_prns configuration parameter: " << ia.what() << '\n';
+                        }
+                    catch (const std::out_of_range& oor)
+                        {
+                            std::cerr << "Out of range at GNSS-SDR.IRNSS_banned_prns configuration parameter: " << oor.what() << '\n';
+                        }
+                }
+        }
+
     if (configuration_->property("Channels_1C.count", 0) > 0)
         {
             // Loop to create GPS L1 C/A signals
@@ -2708,6 +2850,19 @@ void GNSSFlowgraph::set_signals_list()
                         std::string("B3"));
                 }
         }
+    
+    if (configuration_->property("Channels_1I.count", 0) > 0)
+        {
+            // Loop to create GPS L1 C/A signals
+            for (available_gnss_prn_iter = available_irnss_prn.cbegin();
+                 available_gnss_prn_iter != available_irnss_prn.cend();
+                 available_gnss_prn_iter++)
+                {
+                    available_IRNSS_1I_signals_.emplace_back(
+                        Gnss_Satellite(std::string("IRNSS"), *available_gnss_prn_iter),
+                        std::string("1I"));
+                }
+        }
 }
 
 
@@ -2715,11 +2870,13 @@ void GNSSFlowgraph::set_channels_state()
 {
     std::lock_guard<std::mutex> lock(signal_list_mutex_);
     max_acq_channels_ = configuration_->property("Channels.in_acquisition", channels_count_);
+    LOG(INFO) << max_acq_channels_ << " Max aq channels";
     if (max_acq_channels_ > channels_count_)
         {
             max_acq_channels_ = channels_count_;
             LOG(WARNING) << "Channels_in_acquisition is bigger than number of channels. Variable acq_channels_count_ is set to " << channels_count_;
         }
+    LOG(INFO) << channels_count_ << " Number of channels";
     channels_state_.reserve(channels_count_);
     for (int i = 0; i < channels_count_; i++)
         {
@@ -2731,10 +2888,10 @@ void GNSSFlowgraph::set_channels_state()
                 {
                     channels_state_.push_back(0);
                 }
-            DLOG(INFO) << "Channel " << i << " in state " << channels_state_[i];
+            LOG(INFO) << "Channel " << i << " in state " << channels_state_[i];
         }
     acq_channels_count_ = max_acq_channels_;
-    DLOG(INFO) << acq_channels_count_ << " channels in acquisition state";
+    LOG(INFO) << acq_channels_count_ << " channels in acquisition state";
 }
 
 
@@ -2792,15 +2949,41 @@ Gnss_Signal GNSSFlowgraph::search_next_signal(const std::string& searched_signal
     float& estimated_doppler,
     double& RX_time)
 {
+    LOG(INFO)<<"ENTERING SEARCH NEXT SIGNAL";
+    LOG(INFO)<<"ENTERING SEARCH NEXT SIGNAL";
+
+    LOG(INFO)<<"ENTERING SEARCH NEXT SIGNAL";
+
+    LOG(INFO)<<"ENTERING SEARCH NEXT SIGNAL";
+
+    LOG(INFO)<<searched_signal;
+    LOG(INFO)<<searched_signal;
+    LOG(INFO)<<searched_signal;
+    LOG(INFO)<<searched_signal;
+    LOG(INFO)<<searched_signal;
+
+
     is_primary_frequency = false;
     assistance_available = false;
     Gnss_Signal result;
     bool found_signal = false;
+    LOG(INFO)<<"SIGNAL IS "<< mapStringValues_[searched_signal];
+    LOG(INFO)<<"SIGNAL IS "<< mapStringValues_[searched_signal];
+
+    LOG(INFO)<<"SIGNAL IS "<< mapStringValues_[searched_signal];
+
+    LOG(INFO)<<"SIGNAL IS "<< mapStringValues_[searched_signal];
+    LOG(INFO)<<"SIGNAL IS "<< mapStringValues_[searched_signal];
+    LOG(INFO)<<"SIGNAL IS "<< mapStringValues_[searched_signal];
+    LOG(INFO)<<"SIGNAL IS "<< mapStringValues_[searched_signal];
+    LOG(INFO)<<"SIGNAL IS "<< mapStringValues_[searched_signal];
+
     switch (mapStringValues_[searched_signal])
         {
         case evGPS_1C:
             // todo: assist the satellite selection with almanac and current PVT here (rehuse priorize_satellite function used in control_thread)
             result = available_GPS_1C_signals_.front();
+            LOG(INFO)<< "RESULT IS gps "<<result;
             available_GPS_1C_signals_.pop_front();
             if (!pop)
                 {
@@ -3083,6 +3266,24 @@ Gnss_Signal GNSSFlowgraph::search_next_signal(const std::string& searched_signal
                 {
                     available_BDS_B3_signals_.push_back(result);
                 }
+            break;
+        case evIRN_1I:
+            // todo: assist the satellite selection with almanac and current PVT here (rehuse priorize_satellite function used in control_thread)
+            result = available_IRNSS_1I_signals_.front();
+            LOG(INFO)<< "RESULT IS IRNSS "<<result;
+            LOG(INFO)<< "RESULT IS IRNSS "<<result;
+            LOG(INFO)<< "RESULT IS IRNSS "<<result;
+            LOG(INFO)<< "RESULT IS IRNSS "<<result;
+            LOG(INFO)<< "RESULT IS IRNSS "<<result;
+            LOG(INFO)<< "RESULT IS IRNSS "<<result;
+            LOG(INFO)<< "RESULT IS IRNSS "<<result;
+
+            available_IRNSS_1I_signals_.pop_front();
+            if (!pop)
+                {
+                    available_IRNSS_1I_signals_.push_back(result);
+                }
+            is_primary_frequency = true;  // indicate that the searched satellite signal belongs to "primary" link (L1, E1, B1, etc..)
             break;
 
         default:

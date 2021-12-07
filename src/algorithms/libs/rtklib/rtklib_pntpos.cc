@@ -147,11 +147,11 @@ double prange(const obsd_t *obs, const nav_t *nav, const double *azel,
         }
 
     /* L1-L2 for GPS/GLO/QZS, L1-L5 for GAL/SBS/BDS */
-    if (sys == SYS_GAL or sys == SYS_SBS or sys == SYS_BDS)
+    if (sys == SYS_GAL || sys == SYS_SBS || sys == SYS_BDS)
         {
             j = 2;
         }
-    else if (sys == SYS_GPS or sys == SYS_GLO)
+    else if (sys == SYS_GPS || sys == SYS_GLO)
         {
             if (obs->code[1] != CODE_NONE)
                 {
@@ -189,7 +189,7 @@ double prange(const obsd_t *obs, const nav_t *nav, const double *azel,
                 }
         }
     /* fL1^2 / fL2(orL5)^2 . See IS-GPS-200, p. 103 and Galileo ICD p. 48 */
-    if (sys == SYS_GPS or sys == SYS_GAL or sys == SYS_GLO or sys == SYS_BDS)
+    if (sys == SYS_GPS || sys == SYS_GAL || sys == SYS_GLO || sys == SYS_BDS || sys==SYS_IRN)
         {
             gamma_ = std::pow(lam[j], 2.0) / std::pow(lam[i], 2.0);
         }

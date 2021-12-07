@@ -125,7 +125,7 @@ void Gnss_Satellite::set_system(const std::string& system_)
         }
     else
         {
-            DLOG(INFO) << "System " << system_ << " is not defined {GPS, Glonass, SBAS, Galileo, Beidou}. Initialization?";
+            DLOG(INFO) << "System " << system_ << " is not defined {GPS, Glonass, SBAS, Galileo, Beidou, IRNSS}. Initialization?";
             system = std::string("");
         }
 }
@@ -226,6 +226,18 @@ void Gnss_Satellite::set_PRN(uint32_t PRN_)
                 {
                     PRN = PRN_;
                 }
+        }
+    else if (system == "IRNSS")
+        {
+            // if (PRN_ < 1 or PRN_ > 32)
+            //     {
+            //         DLOG(INFO) << "This PRN is not defined";
+            //         PRN = 0;
+            //     }
+            // else
+            //     {
+                    PRN = PRN_;
+                // }
         }
 
     else
@@ -756,6 +768,9 @@ std::string Gnss_Satellite::what_block(const std::string& system_, uint32_t PRN_
                 default:
                     block_ = std::string("Unknown(Simulated)");
                 }
+        }
+        if (system_ == "IRNSS"){
+            block_ = std::string("Unknown");
         }
     return block_;
 }

@@ -26,6 +26,10 @@ set(SYSTEM_PARAMETERS_SOURCES
     glonass_gnav_utc_model.cc
     glonass_gnav_navigation_message.cc
     reed_solomon.cc
+    irnss_ephemeris.cc
+    irnss_iono.cc
+    irnss_navigation_message.cc
+    irnss_utc_model.cc
 )
 
 set(SYSTEM_PARAMETERS_HEADERS
@@ -87,6 +91,11 @@ set(SYSTEM_PARAMETERS_HEADERS
     MATH_CONSTANTS.h
     reed_solomon.h
     galileo_has_page.h
+    IRNSS_at_1.h
+    irnss_ephemeris.h
+    irnss_iono.h
+    irnss_navigation_message.h
+    irnss_utc_model.h
 )
 
 list(SORT SYSTEM_PARAMETERS_HEADERS)

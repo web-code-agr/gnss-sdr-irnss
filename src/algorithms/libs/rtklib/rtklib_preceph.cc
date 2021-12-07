@@ -49,8 +49,12 @@ int code2sys(char code)
 {
     if (code == 'G' || code == ' ')
         {
-            return SYS_GPS;
+            return SYS_GPS; 
         }
+    if (code == 'I')
+    {
+        return SYS_IRN;
+    }
     if (code == 'R')
         {
             return SYS_GLO;

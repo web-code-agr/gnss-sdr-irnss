@@ -72,6 +72,10 @@ class Gps_Ephemeris;
 class Gps_Iono;
 class Gps_Navigation_Message;
 class Gps_Utc_Model;
+class Irnss_Ephemeris;
+class Irnss_Iono;
+class Irnss_Utc_Model;
+class Irnss_Navigation_Message;
 class Rtklib_Solver;
 
 
@@ -162,6 +166,7 @@ public:
      *    610   |  BeiDou B3I + GPS L1 C/A + Galileo E1B + GLONASS L1 C/A + BeiDou B1I
      *    1000  |  GPS L1 C/A + GPS L2C + GPS L5
      *    1001  |  GPS L1 C/A + Galileo E1B + GPS L2C + GPS L5 + Galileo E5a
+     *    1002  | IRNSS L5
      *
      */
     void print_rinex_annotation(const Rtklib_Solver* pvt_solver,
@@ -175,6 +180,9 @@ public:
      */
     void log_rinex_nav_gps_nav(int type_of_rx,
         const std::map<int32_t, Gps_Ephemeris>& new_eph);
+
+    void log_rinex_nav_irnss_nav(int type_of_rx,
+        const std::map<int32_t, Irnss_Ephemeris>& new_eph);
 
     /*!
      * \brief Print RINEX annotation for GPS CNAV message
@@ -236,6 +244,10 @@ private:
      */
     void rinex_obs_header(std::fstream& out,
         const Gps_Ephemeris& eph,
+        double d_TOW_first_observation);
+
+    void rinex_obs_header(std::fstream& out,
+        const Irnss_Ephemeris& eph,
         double d_TOW_first_observation);
 
     /*
@@ -359,6 +371,11 @@ private:
         double obs_time,
         const std::map<int32_t, Gnss_Synchro>& observables) const;
 
+    void log_rinex_obs(std::fstream& out,
+        const Irnss_Ephemeris& eph,
+        double obs_time,
+        const std::map<int32_t, Gnss_Synchro>& observables) const;
+
     /*
      * Writes GPS L2 observables into the RINEX file
      */
@@ -469,6 +486,11 @@ private:
         const Gps_Iono& iono,
         const Gps_Utc_Model& utc_model,
         const Gps_Ephemeris& eph) const;
+    
+    void rinex_nav_header(std::fstream& out,
+        const Irnss_Iono& iono,
+        const Irnss_Utc_Model& utc_model,
+        const Irnss_Ephemeris& eph) const;
 
     /*
      * Generates the GPS L2C(M) Navigation Data header
@@ -587,6 +609,9 @@ private:
     void log_rinex_nav(std::fstream& out,
         const std::map<int32_t, Gps_Ephemeris>& eph_map) const;
 
+    void log_rinex_nav(std::fstream& out,
+        const std::map<int32_t, Irnss_Ephemeris>& eph_map) const;
+
     /*
      * Writes data from the GPS L2 navigation message into the RINEX file
      */
@@ -665,6 +690,9 @@ private:
      */
     boost::posix_time::ptime compute_GPS_time(const Gps_Ephemeris& eph, double obs_time) const;
 
+    boost::posix_time::ptime compute_IRNSS_time(const Irnss_Ephemeris& eph, double obs_time) const;
+
+
     /*
      * Computes the GPS time and returns a boost::posix_time::ptime object
      */
@@ -711,6 +739,10 @@ private:
     void update_nav_header(std::fstream& out,
         const Gps_Utc_Model& utc_model,
         const Gps_Iono& gps_iono, const Gps_Ephemeris& eph) const;
+
+    void update_nav_header(std::fstream& out,
+        const Irnss_Utc_Model& utc_model,
+        const Irnss_Iono& gps_iono, const Irnss_Ephemeris& eph) const;
 
     void update_nav_header(std::fstream& out,
         const Gps_CNAV_Utc_Model& utc_model,
@@ -762,6 +794,9 @@ private:
 
     void update_obs_header(std::fstream& out,
         const Gps_Utc_Model& utc_model) const;
+
+    void update_obs_header(std::fstream& out,
+        const Irnss_Utc_Model& utc_model) const;
 
     void update_obs_header(std::fstream& out,
         const Gps_CNAV_Utc_Model& utc_model) const;
@@ -994,6 +1029,8 @@ private:
     std::fstream navGloFile;  // Output file stream for RINEX GLONASS navigation data file
     std::fstream navBdsFile;  // Output file stream for RINEX Galileo navigation data file
     std::fstream navMixFile;  // Output file stream for RINEX Mixed navigation data file
+    std::fstream navIrnFile;  // Output file stream for RINEX Irnss navigation data file
+
 
     std::string navfilename;                      // Name of RINEX navigation file for GPS L1
     std::string obsfilename;                      // Name of RINEX observation file
@@ -1002,6 +1039,8 @@ private:
     std::string navGlofilename;                   // Name of RINEX navigation file for Glonass
     std::string navBdsfilename;                   // Name of RINEX navigation file for BeiDou
     std::string navMixfilename;                   // Name of RINEX navigation file for fixed signals
+    std::string navIrnfilename;                   // Name of RINEX navigation file for Irnss
+
     std::vector<std::string> output_navfilename;  // Name of output RINEX navigation file(s)
 
     std::string d_stringVersion;  // RINEX version (2.10/2.11 or 3.01/3.02)

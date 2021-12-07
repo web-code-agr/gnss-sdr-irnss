@@ -18,6 +18,7 @@ set(TELEMETRY_DECODER_ADAPTER_SOURCES
     glonass_l2_ca_telemetry_decoder.cc
     beidou_b1i_telemetry_decoder.cc
     beidou_b3i_telemetry_decoder.cc
+    irnss_sps_l5_telemetry_decoder.cc
 )
 
 set(TELEMETRY_DECODER_ADAPTER_HEADERS
@@ -33,6 +34,7 @@ set(TELEMETRY_DECODER_ADAPTER_HEADERS
     glonass_l2_ca_telemetry_decoder.h
     beidou_b1i_telemetry_decoder.h
     beidou_b3i_telemetry_decoder.h
+    irnss_sps_l5_telemetry_decoder.h
 )
 
 list(SORT TELEMETRY_DECODER_ADAPTER_HEADERS)

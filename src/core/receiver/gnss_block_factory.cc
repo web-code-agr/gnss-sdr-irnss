@@ -67,6 +67,9 @@
 #include "glonass_l2_ca_dll_pll_tracking.h"
 #include "glonass_l2_ca_pcps_acquisition.h"
 #include "glonass_l2_ca_telemetry_decoder.h"
+#include "irnss_sps_l5_dll_pll_tracking.h"
+#include "irnss_sps_l5_pcps_acquisition.h"
+#include "irnss_sps_l5_telemetry_decoder.h"
 #include "gnss_block_interface.h"
 #include "gnss_sdr_make_unique.h"
 #include "gnss_sdr_string_literals.h"
@@ -318,17 +321,20 @@ std::unique_ptr<GNSSBlockInterface> GNSSBlockFactory::GetObservables(const Confi
     Glonass_channels += configuration->property("Channels_2G.count", 0);
     unsigned int Beidou_channels = configuration->property("Channels_B1.count", 0);
     Beidou_channels += configuration->property("Channels_B3.count", 0);
+    unsigned int IRNSS_channels = configuration->property("Channels_1I.count", 0);
     unsigned int extra_channels = 1;  // For monitor channel sample counter
     return GetBlock(configuration, "Observables",
         Galileo_channels +
             GPS_channels +
             Glonass_channels +
             Beidou_channels +
+            IRNSS_channels +
             extra_channels,
         Galileo_channels +
             GPS_channels +
             Glonass_channels +
-            Beidou_channels);
+            Beidou_channels +
+            IRNSS_channels);
 }
 
 
@@ -353,8 +359,9 @@ std::unique_ptr<GNSSBlockInterface> GNSSBlockFactory::GetPVT(const Configuration
     Glonass_channels += configuration->property("Channels_2G.count", 0);
     unsigned int Beidou_channels = configuration->property("Channels_B1.count", 0);
     Beidou_channels += configuration->property("Channels_B3.count", 0);
+    unsigned int IRNSS_channels = configuration->property("Channels_1I.count", 0);
     return GetBlock(configuration, "PVT",
-        Galileo_channels + GPS_channels + Glonass_channels + Beidou_channels, 0);
+        Galileo_channels + GPS_channels + Glonass_channels + Beidou_channels + IRNSS_channels, 0);
 }
 
 
@@ -447,6 +454,8 @@ std::unique_ptr<std::vector<std::unique_ptr<GNSSBlockInterface>>> GNSSBlockFacto
     const unsigned int Channels_B3_count = configuration->property("Channels_B3.count", 0);
     const unsigned int Channels_7X_count = configuration->property("Channels_7X.count", 0);
     const unsigned int Channels_E6_count = configuration->property("Channels_E6.count", 0);
+    const unsigned int Channels_1I_count = configuration->property("Channels_1I.count", 0);
+
 
     const unsigned int total_channels = Channels_1C_count +
                                         Channels_1B_count +
@@ -458,7 +467,8 @@ std::unique_ptr<std::vector<std::unique_ptr<GNSSBlockInterface>>> GNSSBlockFacto
                                         Channels_B1_count +
                                         Channels_B3_count +
                                         Channels_7X_count +
-                                        Channels_E6_count;
+                                        Channels_E6_count +
+                                        Channels_1I_count;
 
     auto channels = std::make_unique<std::vector<std::unique_ptr<GNSSBlockInterface>>>(total_channels);
     try
@@ -605,6 +615,20 @@ std::unique_ptr<std::vector<std::unique_ptr<GNSSBlockInterface>>> GNSSBlockFacto
                         queue);
                     channel_absolute_id++;
                 }
+            
+            // **************** IRNSS L5 C/A CHANNELS ****************************
+            LOG(INFO) << "Getting " << Channels_1I_count << " IRNSS L5 C/A channels";
+
+            for (unsigned int i = 0; i < Channels_1I_count; i++)
+                {
+                    // Store the channel into the vector of channels
+                    channels->at(channel_absolute_id) = GetChannel(configuration,
+                        std::string("1I"),
+                        channel_absolute_id,
+                        queue);
+                    channel_absolute_id++;
+                }
+
         }
     catch (const std::exception& e)
         {
@@ -901,9 +925,9 @@ std::unique_ptr<GNSSBlockInterface> GNSSBlockFactory::GetBlock(
                 }
             else if (implementation == "GPS_L2_M_PCPS_Acquisition")
                 {
-                    std::unique_ptr<AcquisitionInterface> block_ = std::make_unique<GpsL2MPcpsAcquisition>(configuration, role, in_streams,
-                        out_streams);
-                    block = std::move(block_);
+                    // std::unique_ptr<AcquisitionInterface> block_ = std::make_unique<GpsL2MPcpsAcquisition>(configuration, role, in_streams,
+                    //     out_streams);
+                    // block = std::move(block_);
                 }
             else if (implementation == "GPS_L5i_PCPS_Acquisition")
                 {
@@ -986,6 +1010,12 @@ std::unique_ptr<GNSSBlockInterface> GNSSBlockFactory::GetBlock(
             else if (implementation == "BEIDOU_B3I_PCPS_Acquisition")
                 {
                     std::unique_ptr<AcquisitionInterface> block_ = std::make_unique<BeidouB3iPcpsAcquisition>(configuration, role, in_streams,
+                        out_streams);
+                    block = std::move(block_);
+                }
+            else if (implementation == "IRNSS_L5_CA_PCPS_Acquisition")
+                {
+                    std::unique_ptr<GNSSBlockInterface> block_ = std::make_unique<IrnssSpsL5PcpsAcquisition>(configuration, role, in_streams,
                         out_streams);
                     block = std::move(block_);
                 }
@@ -1133,6 +1163,12 @@ std::unique_ptr<GNSSBlockInterface> GNSSBlockFactory::GetBlock(
                         out_streams);
                     block = std::move(block_);
                 }
+            else if (implementation == "IRNSS_L5_CA_DLL_PLL_Tracking")
+                {
+                    std::unique_ptr<GNSSBlockInterface> block_ = std::make_unique<Irnssspsl5DllPllTracking>(configuration, role, in_streams,
+                        out_streams);
+                    block = std::move(block_);
+                }
 #if CUDA_GPU_ACCEL
             else if (implementation == "GPS_L1_CA_DLL_PLL_Tracking_GPU")
                 {
@@ -1247,6 +1283,12 @@ std::unique_ptr<GNSSBlockInterface> GNSSBlockFactory::GetBlock(
                         out_streams);
                     block = std::move(block_);
                 }
+            else if (implementation == "IRNSS_L5_CA_Telemetry_Decoder")
+                {
+                    std::unique_ptr<GNSSBlockInterface> block_ = std::make_unique<Irnssspsl5TelemetryDecoder>(configuration, role, in_streams,
+                        out_streams);
+                    block = std::move(block_);
+                }
 
             // OBSERVABLES -------------------------------------------------------------
             else if ((implementation == "Hybrid_Observables") || (implementation == "GPS_L1_CA_Observables") || (implementation == "GPS_L2C_Observables") ||
@@ -1273,8 +1315,10 @@ std::unique_ptr<GNSSBlockInterface> GNSSBlockFactory::GetBlock(
         }
     catch (const std::exception& e)
         {
-            std::cout << "Configuration error. GNSS-SDR program ended.\n";
-            LOG(INFO) << "Exception raised while instantiating a block: " << e.what();
+            LOG(INFO) << "Exception raised while instantiating the block: " << e.what();
+            std::cout << "Configuration error in " << role << " block, implementation " << (implementation == "Wrong"s ? "not defined."s : implementation) << ". The error was:\n"
+                      << e.what() << '\n';
+            std::cout << "GNSS-SDR program ended.\n";
             exit(1);
         }
     return block;
@@ -1330,9 +1374,9 @@ std::unique_ptr<AcquisitionInterface> GNSSBlockFactory::GetAcqBlock(
         }
     else if (implementation == "GPS_L2_M_PCPS_Acquisition")
         {
-            std::unique_ptr<AcquisitionInterface> block_ = std::make_unique<GpsL2MPcpsAcquisition>(configuration, role, in_streams,
-                out_streams);
-            block = std::move(block_);
+            // std::unique_ptr<AcquisitionInterface> block_ = std::make_unique<GpsL2MPcpsAcquisition>(configuration, role, in_streams,
+            //     out_streams);
+            // block = std::move(block_);
         }
     else if (implementation == "GPS_L5i_PCPS_Acquisition")
         {
@@ -1416,6 +1460,12 @@ std::unique_ptr<AcquisitionInterface> GNSSBlockFactory::GetAcqBlock(
     else if (implementation == "BEIDOU_B3I_PCPS_Acquisition")
         {
             std::unique_ptr<AcquisitionInterface> block_ = std::make_unique<BeidouB3iPcpsAcquisition>(configuration, role, in_streams,
+                out_streams);
+            block = std::move(block_);
+        }
+    else if (implementation == "IRNSS_L5_CA_PCPS_Acquisition")
+        {
+            std::unique_ptr<AcquisitionInterface> block_ = std::make_unique<IrnssSpsL5PcpsAcquisition>(configuration, role, in_streams,
                 out_streams);
             block = std::move(block_);
         }
@@ -1581,6 +1631,12 @@ std::unique_ptr<TrackingInterface> GNSSBlockFactory::GetTrkBlock(
                 out_streams);
             block = std::move(block_);
         }
+    else if (implementation == "IRNSS_L5_CA_DLL_PLL_Tracking")
+        {
+            std::unique_ptr<TrackingInterface> block_ = std::make_unique<Irnssspsl5DllPllTracking>(configuration, role, in_streams,
+                out_streams);
+            block = std::move(block_);
+        }
 #if CUDA_GPU_ACCEL
     else if (implementation == "GPS_L1_CA_DLL_PLL_Tracking_GPU")
         {
@@ -1709,6 +1765,12 @@ std::unique_ptr<TelemetryDecoderInterface> GNSSBlockFactory::GetTlmBlock(
     else if (implementation == "BEIDOU_B3I_Telemetry_Decoder")
         {
             std::unique_ptr<TelemetryDecoderInterface> block_ = std::make_unique<BeidouB3iTelemetryDecoder>(configuration, role, in_streams,
+                out_streams);
+            block = std::move(block_);
+        }
+    else if (implementation == "IRNSS_L5_CA_Telemetry_Decoder")
+        {
+            std::unique_ptr<TelemetryDecoderInterface> block_ = std::make_unique<Irnssspsl5TelemetryDecoder>(configuration, role, in_streams,
                 out_streams);
             block = std::move(block_);
         }

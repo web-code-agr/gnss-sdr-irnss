@@ -20,6 +20,7 @@
 #include "configuration_interface.h"  // for ConfigurationInterface
 #include "galileo_almanac.h"          // for Galileo_Almanac
 #include "galileo_ephemeris.h"        // for Galileo_Ephemeris
+#include "irnss_ephemeris.h"
 #include "gnss_sdr_flags.h"           // for FLAGS_RINEX_version
 #include "gps_almanac.h"              // for Gps_Almanac
 #include "gps_ephemeris.h"            // for Gps_Ephemeris
@@ -190,6 +191,7 @@ Rtklib_Pvt::Rtklib_Pvt(const ConfigurationInterface* configuration,
      *
      *    1000  |  GPS L1 C/A + GPS L2C + GPS L5
      *    1001  |  GPS L1 C/A + Galileo E1B + GPS L2C + GPS L5 + Galileo E5a
+     *    1002  |  IRNSS L5
      */
     const int gps_1C_count = configuration->property("Channels_1C.count", 0);
     const int gps_2S_count = configuration->property("Channels_2S.count", 0);
@@ -202,6 +204,8 @@ Rtklib_Pvt::Rtklib_Pvt(const ConfigurationInterface* configuration,
     const int glo_2G_count = configuration->property("Channels_2G.count", 0);
     const int bds_B1_count = configuration->property("Channels_B1.count", 0);
     const int bds_B3_count = configuration->property("Channels_B3.count", 0);
+    const int irnss_1I_count = configuration->property("Channels_1I.count", 0);
+
 
     if ((gps_1C_count != 0) && (gps_2S_count == 0) && (gps_L5_count == 0) && (gal_1B_count == 0) && (gal_E5a_count == 0) && (gal_E5b_count == 0) && (gal_E6_count == 0) && (glo_1G_count == 0) && (glo_2G_count == 0) && (bds_B1_count == 0) && (bds_B3_count == 0))
         {
@@ -412,6 +416,11 @@ Rtklib_Pvt::Rtklib_Pvt(const ConfigurationInterface* configuration,
         {
             pvt_output_parameters.type_of_receiver = 1001;  // GPS L1 + Galileo E1B + GPS L2C + GPS L5 + Galileo E5a
         }
+    if ( (irnss_1I_count != 0)&& (gps_1C_count == 0) && (gps_2S_count == 0) && (gps_L5_count == 0) && (gal_1B_count == 0) && (gal_E5a_count == 0) && (gal_E5b_count == 0) && (gal_E6_count == 0) && (glo_1G_count == 0) && (glo_2G_count == 0) && (bds_B1_count == 0) && (bds_B3_count == 0))
+        {
+            LOG(INFO)<<"IRNSS pvt";
+            pvt_output_parameters.type_of_receiver = 1002;  // L1
+        }
 
     // RTKLIB PVT solver options
     // Settings 1
@@ -451,7 +460,7 @@ Rtklib_Pvt::Rtklib_Pvt(const ConfigurationInterface* configuration,
 
     int num_bands = 0;
 
-    if ((gps_1C_count > 0) || (gal_1B_count > 0) || (gal_E6_count > 0) || (glo_1G_count > 0) || (bds_B1_count > 0))
+    if ((irnss_1I_count > 0) || (gps_1C_count > 0) || (gal_1B_count > 0) || (gal_E6_count > 0) || (glo_1G_count > 0) || (bds_B1_count > 0))
         {
             num_bands = 1;
         }
@@ -588,6 +597,10 @@ Rtklib_Pvt::Rtklib_Pvt(const ConfigurationInterface* configuration,
     const int earth_tide = configuration->property(role + ".earth_tide", 0);
 
     int nsys = 0;
+    if(irnss_1I_count > 0)
+        {
+            nsys += SYS_IRN;
+        }
     if ((gps_1C_count > 0) || (gps_2S_count > 0) || (gps_L5_count > 0))
         {
             nsys += SYS_GPS;
@@ -604,6 +617,7 @@ Rtklib_Pvt::Rtklib_Pvt(const ConfigurationInterface* configuration,
         {
             nsys += SYS_BDS;
         }
+    LOG(INFO)<<"NSYS: "<<nsys;
 
     int navigation_system = configuration->property(role + ".navigation_system", nsys); /* (SYS_XXX) see src/algorithms/libs/rtklib/rtklib.h */
     if ((navigation_system < 1) || (navigation_system > 255))                           /* GPS: 1   SBAS: 2   GPS+SBAS: 3 Galileo: 8  Galileo+GPS: 9 GPS+SBAS+Galileo: 11 All: 255 */
@@ -862,6 +876,11 @@ void Rtklib_Pvt::clear_ephemeris()
 std::map<int, Gps_Ephemeris> Rtklib_Pvt::get_gps_ephemeris() const
 {
     return pvt_->get_gps_ephemeris_map();
+}
+
+std::map<int, Irnss_Ephemeris> Rtklib_Pvt::get_irnss_ephemeris() const
+{
+    return pvt_->get_irnss_ephemeris_map();
 }
 
 

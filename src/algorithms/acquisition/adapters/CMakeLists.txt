@@ -26,6 +26,7 @@ set(ACQ_ADAPTER_SOURCES
     glonass_l2_ca_pcps_acquisition.cc
     beidou_b1i_pcps_acquisition.cc
     beidou_b3i_pcps_acquisition.cc
+    irnss_sps_l5_pcps_acquisition.cc
 )
 
 set(ACQ_ADAPTER_HEADERS
@@ -49,6 +50,7 @@ set(ACQ_ADAPTER_HEADERS
     glonass_l2_ca_pcps_acquisition.h
     beidou_b1i_pcps_acquisition.h
     beidou_b3i_pcps_acquisition.h
+    irnss_sps_l5_pcps_acquisition.h
 )
 
 if(ENABLE_FPGA)
@@ -59,6 +61,7 @@ if(ENABLE_FPGA)
         galileo_e5a_pcps_acquisition_fpga.cc
         galileo_e5b_pcps_acquisition_fpga.cc
         gps_l5i_pcps_acquisition_fpga.cc
+        irnss_sps_l5_pcps_acquisition_fpga.cc
     )
     set(ACQ_ADAPTER_HEADERS ${ACQ_ADAPTER_HEADERS}
         gps_l1_ca_pcps_acquisition_fpga.h
@@ -67,6 +70,7 @@ if(ENABLE_FPGA)
         galileo_e5a_pcps_acquisition_fpga.h
         galileo_e5b_pcps_acquisition_fpga.h
         gps_l5i_pcps_acquisition_fpga.h
+        irnss_sps_l5_pcps_acquisition_fpga.h
     )
 endif()
 

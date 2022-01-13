@@ -50,7 +50,7 @@ void irnss_l5_sps_code_gen_int(gsl::span<int32_t> _dest, int32_t _prn, uint32_t 
     int32_t prn_idx;
 
     // G2 Delays as defined in IRNSS doc (Pg 10-11): "Initial state of G2 provides chip delay"
-    const std::array<int32_t, 14> delays = {935 /*PRN1*/, 38, 564, 370, 944, 107, 20, 304, 152, 868, 76, 892, 722, 490 /*PRN14*/};
+    const std::array<int32_t,10> delays = {935 /*PRN1*/, 38, 564, 370, 944, 107, 20, 304, 152, 868 /*, 76, 892, 722, 490 PRN14*/};
 
     // compute delay array index for given PRN number 
     prn_idx = _prn - 1;
